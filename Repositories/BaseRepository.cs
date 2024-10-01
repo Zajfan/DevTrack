@@ -11,6 +11,6 @@ namespace DevTrack.Repositories
             this.connectionFactory = connectionFactory;
         }
 
-        // Add common methods like ExecuteQuery, ExecuteNonQuery, etc.
+        // ... (Add common methods like ExecuteQuery, ExecuteNonQuery, etc.) ...
     }
 }
