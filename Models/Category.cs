@@ -1,10 +1,14 @@
 using MySql.Data.MySqlClient;
+using System.ComponentModel.DataAnnotations;
 
-namespace DevTrack.DAL
+namespace DevTrack.Models
 {
     public class Category
     {
         public int CategoryID { get; set; }
+
+        [Required(ErrorMessage = "Category Name is required.")]
+        [StringLength(255, ErrorMessage = "Category Name cannot exceed 255 characters.")]
         public string CategoryName { get; set; }
 
         public Category() { }
