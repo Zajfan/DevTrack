@@ -2,31 +2,35 @@ using DevTrack.Models;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
+using System.Threading.Tasks;
 
 namespace DevTrack.Repositories
 {
-    public class MilestoneRepository
+    public class MilestoneRepository : BaseRepository
     {
-        private readonly string connectionString = ConfigurationManager.ConnectionStrings["DevTrackConnection"].ConnectionString;
+        private readonly MilestoneMapper milestoneMapper = new MilestoneMapper();
 
-        public List<Milestone> GetAllMilestones()
+        public MilestoneRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
+        {
+        }
+
+        public async Task<List<Milestone>> GetAllMilestonesAsync()
         {
             var milestones = new List<Milestone>();
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM milestones";
                     using var command = new MySqlCommand(query, connection);
 
-                    connection.Open();
-                    using var reader = command.ExecuteReader();
+                    await connection.OpenAsync();
+                    using var reader = await command.ExecuteReaderAsync();
 
-                    while (reader.Read())
+                    while (await reader.ReadAsync())
                     {
-                        milestones.Add(new Milestone(reader));
+                        milestones.Add(milestoneMapper.MapFromReader(reader));
                     }
                 }
             }
@@ -39,11 +43,11 @@ namespace DevTrack.Repositories
             return milestones;
         }
 
-        public void CreateMilestone(Milestone milestone)
+        public async Task CreateMilestoneAsync(Milestone milestone)
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "INSERT INTO milestones (ProjectID, MilestoneName, Description, TargetDate, Status, CompletedDate) " +
                                    "VALUES (@ProjectID, @MilestoneName, @Description, @TargetDate, @Status, @CompletedDate)";
@@ -55,8 +59,8 @@ namespace DevTrack.Repositories
                     command.Parameters.AddWithValue("@Status", milestone.Status);
                     command.Parameters.AddWithValue("@CompletedDate", milestone.CompletedDate);
 
-                    connection.Open();
-                    command.ExecuteNonQuery();
+                    await connection.OpenAsync();
+                    await command.ExecuteNonQueryAsync();
                 }
             }
             catch (MySqlException ex)
@@ -66,11 +70,11 @@ namespace DevTrack.Repositories
             }
         }
 
-        public void UpdateMilestone(Milestone milestone)
+        public async Task UpdateMilestoneAsync(Milestone milestone)
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "UPDATE milestones SET ProjectID = @ProjectID, MilestoneName = @MilestoneName, Description = @Description, " +
                                    "TargetDate = @TargetDate, Status = @Status, CompletedDate = @CompletedDate " +
@@ -84,8 +88,8 @@ namespace DevTrack.Repositories
                     command.Parameters.AddWithValue("@CompletedDate", milestone.CompletedDate);
                     command.Parameters.AddWithValue("@MilestoneID", milestone.MilestoneID);
 
-                    connection.Open();
-                    command.ExecuteNonQuery();
+                    await connection.OpenAsync();
+                    await command.ExecuteNonQueryAsync();
                 }
             }
             catch (MySqlException ex)
@@ -95,18 +99,18 @@ namespace DevTrack.Repositories
             }
         }
 
-        public void DeleteMilestone(int milestoneId)
+        public async Task DeleteMilestoneAsync(int milestoneId)
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "DELETE FROM milestones WHERE MilestoneID = @MilestoneID";
                     using var command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@MilestoneID", milestoneId);
 
-                    connection.Open();
-                    command.ExecuteNonQuery();
+                    await connection.OpenAsync();
+                    await command.ExecuteNonQueryAsync();
                 }
             }
             catch (MySqlException ex)
