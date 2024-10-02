@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Threading.Tasks;
 
-namespace DevTrack.Repositories
+namespace DevTrack.DAL.Repositories
 {
     public class DocumentRepository : BaseRepository
     {

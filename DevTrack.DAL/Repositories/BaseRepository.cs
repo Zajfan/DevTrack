@@ -1,6 +1,6 @@
 using MySql.Data.MySqlClient;
 
-namespace DevTrack.Repositories
+namespace DevTrack.DAL.Repositories
 {
     public abstract class BaseRepository
     {

@@ -1,7 +1,7 @@
 using DevTrack.Models;
 using MySql.Data.MySqlClient;
 
-namespace DevTrack.Repositories
+namespace DevTrack.DAL.Repositories
 {
     public class ProjectMapper
     {

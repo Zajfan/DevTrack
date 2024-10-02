@@ -1,7 +1,7 @@
 using MySql.Data.MySqlClient;
 using System.Configuration;
 
-namespace DevTrack.Repositories
+namespace DevTrack.DAL.Repositories
 {
     public class MySqlConnectionFactory : IDbConnectionFactory
     {

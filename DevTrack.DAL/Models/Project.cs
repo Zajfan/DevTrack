@@ -1,9 +1,9 @@
 using MySql.Data.MySqlClient;
 using System;
-using System.ComponentModel.DataAnnotations; // Import for data annotations
+using System.ComponentModel.DataAnnotations;
 
-namespace DevTrack.Models // Changed namespace to DevTrack.Models
-{
+namespace DevTrack.DAL.Models
+
     public class Project
     {
         public int ProjectID { get; set; }

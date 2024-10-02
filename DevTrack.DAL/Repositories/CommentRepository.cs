@@ -1,4 +1,3 @@
-// CommentRepository.cs
 using DevTrack.Models;
 using MySql.Data.MySqlClient;
 using System;
@@ -6,7 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace DevTrack.Repositories
+namespace DevTrack.DAL.Repositories
 {
     public class CommentRepository : BaseRepository
     {

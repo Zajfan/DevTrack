@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace DevTrack.Repositories
+namespace DevTrack.DAL.Repositories
 {
     public class TaskDependencyRepository : BaseRepository
     {
