@@ -34,6 +34,8 @@ namespace DevTrack.Models
         [Range(0, int.MaxValue, ErrorMessage = "Actual Time must be a non-negative value.")]
         public int? ActualTime { get; set; }
 
+        public int? DependsOnTaskId { get; set; }
+
         public Task() { }
 
         public Task(MySqlDataReader reader)
