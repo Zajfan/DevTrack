@@ -1,33 +1,38 @@
+// CommentRepository.cs
 using DevTrack.Models;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
+using System.Threading.Tasks;
 using System.Xml.Linq;
 
 namespace DevTrack.Repositories
 {
-    public class CommentRepository
+    public class CommentRepository : BaseRepository
     {
-        private readonly string connectionString = ConfigurationManager.ConnectionStrings["DevTrackConnection"].ConnectionString;
+        private readonly CommentMapper commentMapper = new CommentMapper();
 
-        public List<Comment> GetAllComments()
+        public CommentRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
+        {
+        }
+
+        public async Task<List<Comment>> GetAllCommentsAsync()
         {
             var comments = new List<Comment>();
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM comments";
                     using var command = new MySqlCommand(query, connection);
 
-                    connection.Open();
-                    using var reader = command.ExecuteReader();
+                    await connection.OpenAsync();
+                    using var reader = await command.ExecuteReaderAsync();
 
-                    while (reader.Read())
+                    while (await reader.ReadAsync())
                     {
-                        comments.Add(new Comment(reader));
+                        comments.Add(commentMapper.MapFromReader(reader));
                     }
                 }
             }
@@ -40,11 +45,11 @@ namespace DevTrack.Repositories
             return comments;
         }
 
-        public void CreateComment(Comment comment)
+        public async Task CreateCommentAsync(Comment comment)
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "INSERT INTO comments (ProjectID, TaskID, UserID, CommentText, CommentDate) " +
                                    "VALUES (@ProjectID, @TaskID, @UserID, @CommentText, @CommentDate)";
@@ -55,8 +60,8 @@ namespace DevTrack.Repositories
                     command.Parameters.AddWithValue("@CommentText", comment.CommentText);
                     command.Parameters.AddWithValue("@CommentDate", comment.CommentDate);
 
-                    connection.Open();
-                    command.ExecuteNonQuery();
+                    await connection.OpenAsync();
+                    await command.ExecuteNonQueryAsync();
                 }
             }
             catch (MySqlException ex)
@@ -66,11 +71,11 @@ namespace DevTrack.Repositories
             }
         }
 
-        public void UpdateComment(Comment comment)
+        public async Task UpdateCommentAsync(Comment comment)
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "UPDATE comments SET ProjectID = @ProjectID, TaskID = @TaskID, UserID = @UserID, " +
                                    "CommentText = @CommentText, CommentDate = @CommentDate " +
@@ -83,8 +88,8 @@ namespace DevTrack.Repositories
                     command.Parameters.AddWithValue("@CommentDate", comment.CommentDate);
                     command.Parameters.AddWithValue("@CommentID", comment.CommentID);
 
-                    connection.Open();
-                    command.ExecuteNonQuery();
+                    await connection.OpenAsync();
+                    await command.ExecuteNonQueryAsync();
                 }
             }
             catch (MySqlException ex)
@@ -94,18 +99,18 @@ namespace DevTrack.Repositories
             }
         }
 
-        public void DeleteComment(int commentId)
+        public async Task DeleteCommentAsync(int commentId)
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "DELETE FROM comments WHERE CommentID = @CommentID";
                     using var command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@CommentID", commentId);
 
-                    connection.Open();
-                    command.ExecuteNonQuery();
+                    await connection.OpenAsync();
+                    await command.ExecuteNonQueryAsync();
                 }
             }
             catch (MySqlException ex)

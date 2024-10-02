@@ -2,31 +2,35 @@ using DevTrack.Models;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
+using System.Threading.Tasks;
 
 namespace DevTrack.Repositories
 {
-    public class TaskDependencyRepository
+    public class TaskDependencyRepository : BaseRepository
     {
-        private readonly string connectionString = ConfigurationManager.ConnectionStrings["DevTrackConnection"].ConnectionString;
+        private readonly TaskDependencyMapper taskDependencyMapper = new TaskDependencyMapper();
 
-        public List<TaskDependency> GetAllTaskDependencies()
+        public TaskDependencyRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
+        {
+        }
+
+        public async Task<List<TaskDependency>> GetAllTaskDependenciesAsync()
         {
             var dependencies = new List<TaskDependency>();
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM task_dependencies";
                     using var command = new MySqlCommand(query, connection);
 
-                    connection.Open();
-                    using var reader = command.ExecuteReader();
+                    await connection.OpenAsync();
+                    using var reader = await command.ExecuteReaderAsync();
 
-                    while (reader.Read())
+                    while (await reader.ReadAsync())
                     {
-                        dependencies.Add(new TaskDependency(reader));
+                        dependencies.Add(taskDependencyMapper.MapFromReader(reader));
                     }
                 }
             }
@@ -39,11 +43,11 @@ namespace DevTrack.Repositories
             return dependencies;
         }
 
-        public void CreateTaskDependency(TaskDependency dependency)
+        public async Task CreateTaskDependencyAsync(TaskDependency dependency)
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "INSERT INTO task_dependencies (TaskID, DependsOnTaskID) " +
                                    "VALUES (@TaskID, @DependsOnTaskID)";
@@ -51,8 +55,8 @@ namespace DevTrack.Repositories
                     command.Parameters.AddWithValue("@TaskID", dependency.TaskID);
                     command.Parameters.AddWithValue("@DependsOnTaskID", dependency.DependsOnTaskID);
 
-                    connection.Open();
-                    command.ExecuteNonQuery();
+                    await connection.OpenAsync();
+                    await command.ExecuteNonQueryAsync();
                 }
             }
             catch (MySqlException ex)
@@ -62,11 +66,11 @@ namespace DevTrack.Repositories
             }
         }
 
-        public void UpdateTaskDependency(TaskDependency dependency)
+        public async Task UpdateTaskDependencyAsync(TaskDependency dependency)
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "UPDATE task_dependencies SET TaskID = @TaskID, DependsOnTaskID = @DependsOnTaskID " +
                                    "WHERE DependencyID = @DependencyID";
@@ -75,8 +79,8 @@ namespace DevTrack.Repositories
                     command.Parameters.AddWithValue("@DependsOnTaskID", dependency.DependsOnTaskID);
                     command.Parameters.AddWithValue("@DependencyID", dependency.DependencyID);
 
-                    connection.Open();
-                    command.ExecuteNonQuery();
+                    await connection.OpenAsync();
+                    await command.ExecuteNonQueryAsync();
                 }
             }
             catch (MySqlException ex)
@@ -86,18 +90,18 @@ namespace DevTrack.Repositories
             }
         }
 
-        public void DeleteTaskDependency(int dependencyId)
+        public async Task DeleteTaskDependencyAsync(int dependencyId)
         {
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "DELETE FROM task_dependencies WHERE DependencyID = @DependencyID";
                     using var command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@DependencyID", dependencyId);
 
-                    connection.Open();
-                    command.ExecuteNonQuery();
+                    await connection.OpenAsync();
+                    await command.ExecuteNonQueryAsync();
                 }
             }
             catch (MySqlException ex)
