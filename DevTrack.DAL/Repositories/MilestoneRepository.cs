@@ -14,34 +14,7 @@ namespace DevTrack.Repositories
         {
         }
 
-        public async Task<List<Milestone>> GetAllMilestonesAsync()
-        {
-            var milestones = new List<Milestone>();
-
-            try
-            {
-                using (var connection = connectionFactory.CreateConnection())
-                {
-                    string query = "SELECT * FROM milestones";
-                    using var command = new MySqlCommand(query, connection);
-
-                    await connection.OpenAsync();
-                    using var reader = await command.ExecuteReaderAsync();
-
-                    while (await reader.ReadAsync())
-                    {
-                        milestones.Add(milestoneMapper.MapFromReader(reader));
-                    }
-                }
-            }
-            catch (MySqlException ex)
-            {
-                Console.WriteLine($"Error getting all milestones: {ex.Message}");
-                return new List<Milestone>();
-            }
-
-            return milestones;
-        }
+        // ... (GetAllMilestonesAsync method) ...
 
         public async Task CreateMilestoneAsync(Milestone milestone)
         {
