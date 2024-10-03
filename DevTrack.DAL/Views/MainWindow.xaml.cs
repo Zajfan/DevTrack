@@ -1,24 +1,23 @@
-﻿using System.Text;
+﻿using DevTrack.BLL;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace DevTrack
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
-        public MainWindow()
+        private ProjectService projectService;
+
+        public MainWindow(ProjectService projectService)
         {
             InitializeComponent();
+            this.projectService = projectService;
+            DataContext = this;
+        }
+
+        private async void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            projectsDataGrid.ItemsSource = await projectService.GetAllProjectsAsync();
+            // ... load data for other DataGrids (Tasks, etc.)
         }
     }
 }
