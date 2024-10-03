@@ -1,3 +1,4 @@
+
 namespace DevTrack.DAL.Repositories
 {
     public abstract class BaseRepository
@@ -21,7 +22,7 @@ namespace DevTrack.DAL.Repositories
 
                     foreach ((string name, object value) in parameters)
                     {
-                        command.Parameters.AddWithValue(name, value);
+                        object value1 = command.Parameters.AddWithValue(name, value);
                     }
 
                     await connection.OpenAsync();
@@ -75,6 +76,11 @@ namespace DevTrack.DAL.Repositories
                 ("@RepositoryURL", project.RepositoryURL),
                 ("@CategoryID", project.CategoryID),
                 ("@ProjectID", project.ProjectID));
+        }
+
+        private async Task ExecuteNonQueryAsync(string query, (string, object) value1, (string, object) value2, (string, object) value3, (string, object) value4, (string, object) value5, (string, object) value6, (string, object) value7, (string, object) value8, (string, object) value9, (string, object) value10, (string, object) value11, (string, object) value12)
+        {
+            throw new NotImplementedException();
         }
 
         public async Task DeleteProjectAsync(int projectId)
