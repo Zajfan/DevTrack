@@ -1,0 +1,50 @@
+2. Implement Business Logic Layer (BLL)
+
+Create a BLL project: If you haven't already, create a new class library project in your solution for the BLL (e.g., DevTrack.BLL).
+Add business logic classes: Create classes that encapsulate the business rules and logic for your application. These classes will interact with the DAL to retrieve and manipulate data.
+Example: You might have a ProjectService class in the BLL that uses the ProjectRepository to perform operations like creating a new project with validation, assigning a project manager, or calculating project progress.
+3. Design the User Interface (UI)
+
+Create WPF windows and views: Design the UI for your application using WPF windows and user controls.
+Main Window: Create a main window that will serve as the entry point for your application. This window might have a menu, a toolbar, and a central area to display different views.
+Project Views: Create views for managing projects, such as a project list view, a project details view, and views for creating and editing projects.
+Task Views: Create views for managing tasks, such as a task list view, a task details view, and views for creating and editing tasks.
+Other Views: Create views for other entities and functionalities, such as milestones, users, documents, reports, and settings.
+4. Connect the UI to the Backend
+
+Use data binding: Bind UI elements (e.g., text boxes, labels, data grids) to properties in your BLL classes. This will allow the UI to display data from the database and update the database when the user makes changes in the UI.
+Handle UI events: Implement event handlers for buttons, menu items, and other UI elements to trigger actions in the BLL and DAL. For example, a "Save" button on a project form might trigger a method in the ProjectService to save the project data to the database.
+Example BLL Code (ProjectService):
+
+C#
+using DevTrack.DAL;
+using System.Collections.Generic;
+
+namespace DevTrack.BLL
+{
+    public class ProjectService
+    {
+        private ProjectRepository projectRepository = new ProjectRepository();
+
+        public List<Project> GetAllProjects()   
+
+        {
+            return projectRepository.GetAllProjects();
+        }
+
+        public void CreateProject(Project project)
+        {
+            // Perform validation on the project data (e.g., check if the project name is unique)
+            if (IsValidProject(project))
+            {
+                projectRepository.CreateProject(project);
+            }
+            else
+            {
+                // Handle validation errors
+            }
+        }
+
+        // Add other methods for project management
+    }
+}

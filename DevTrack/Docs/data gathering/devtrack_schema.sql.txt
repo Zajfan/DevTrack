@@ -1,0 +1,176 @@
+CREATE DATABASE devtrack;
+
+USE devtrack;
+
+CREATE TABLE projects (
+    ProjectID INT PRIMARY KEY AUTO_INCREMENT,
+    ProjectName VARCHAR(255) NOT NULL,
+    ProjectStage VARCHAR(20) NOT NULL,
+    ProjectManager INT NOT NULL,
+    StartDate DATE,
+    EstimatedCompletionDate DATE,
+    Budget DECIMAL(10, 2),
+    Description TEXT,
+    Status VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE tasks (
+    TaskID INT PRIMARY KEY AUTO_INCREMENT,
+    ProjectID INT NOT NULL,
+    TaskName VARCHAR(255) NOT NULL,
+    Description TEXT,
+    AssignedTo INT NOT NULL,
+    DueDate DATE,
+    Status VARCHAR(20) NOT NULL,
+    Priority INT
+);
+
+CREATE TABLE milestones (
+    MilestoneID INT PRIMARY KEY AUTO_INCREMENT,
+    ProjectID INT NOT NULL,
+    MilestoneName VARCHAR(255) NOT NULL,
+    Description TEXT,
+    TargetDate DATE,
+    Status VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE users (
+    UserID INT PRIMARY KEY AUTO_INCREMENT,
+    UserName VARCHAR(255) NOT NULL,
+    Email VARCHAR(255) NOT NULL,
+    Role VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE documents (
+    DocumentID INT PRIMARY KEY AUTO_INCREMENT,
+    ProjectID INT NOT NULL,
+    FileName VARCHAR(255) NOT NULL,
+    FilePath VARCHAR(255) NOT NULL,
+    UploadDate DATE,
+    UploadedBy INT NOT NULL
+);
+
+-- Add foreign key from tasks to projects
+ALTER TABLE tasks ADD FOREIGN KEY (ProjectID) REFERENCES projects(ProjectID);
+
+-- Add foreign key from milestones to projects
+ALTER TABLE milestones ADD FOREIGN KEY (ProjectID) REFERENCES projects(ProjectID);
+
+-- Add foreign key from documents to projects
+ALTER TABLE documents ADD FOREIGN KEY (ProjectID) REFERENCES projects(ProjectID);
+
+-- Add foreign key from tasks to users
+ALTER TABLE tasks ADD FOREIGN KEY (AssignedTo) REFERENCES users(UserID);
+
+-- Add foreign key from documents to users
+ALTER TABLE documents ADD FOREIGN KEY (UploadedBy) REFERENCES users(UserID);
+
+CREATE DATABASE devtrack;
+
+USE devtrack;
+
+-- Projects Table
+CREATE TABLE projects (
+    ProjectID INT PRIMARY KEY AUTO_INCREMENT,
+    ProjectName VARCHAR(255) NOT NULL,
+    ProjectStage VARCHAR(20) NOT NULL,
+    ProjectManager INT NOT NULL,
+    StartDate DATE,
+    EstimatedCompletionDate DATE,
+    Budget DECIMAL(10, 2),
+    Description TEXT,
+    Status VARCHAR(20) NOT NULL,
+    Priority INT,  -- Add priority level to projects
+    RepositoryURL VARCHAR(255)  -- Add a field to store the project's repository URL
+);
+
+-- Tasks Table
+CREATE TABLE tasks (
+    TaskID INT PRIMARY KEY AUTO_INCREMENT,
+    ProjectID INT NOT NULL,
+    TaskName VARCHAR(255) NOT NULL,
+    Description TEXT,
+    AssignedTo INT NOT NULL,
+    DueDate DATE,
+    Status VARCHAR(20) NOT NULL,
+    Priority INT,
+    EstimatedTime INT,  -- Add estimated time to complete the task (e.g., in hours)
+    ActualTime INT  -- Add a field to track the actual time spent on the task
+);
+
+-- Milestones Table
+CREATE TABLE milestones (
+    MilestoneID INT PRIMARY KEY AUTO_INCREMENT,
+    ProjectID INT NOT NULL,
+    MilestoneName VARCHAR(255) NOT NULL,
+    Description TEXT,
+    TargetDate DATE,
+    Status VARCHAR(20) NOT NULL,
+    CompletedDate DATE  -- Add a field to record the actual completion date
+);
+
+-- Users Table
+CREATE TABLE users (
+    UserID INT PRIMARY KEY AUTO_INCREMENT,
+    UserName VARCHAR(255) NOT NULL,
+    Email VARCHAR(255) NOT NULL,
+    Role VARCHAR(20) NOT NULL,
+    Department VARCHAR(50)  -- Add a department field for users
+);
+
+-- Documents Table
+CREATE TABLE documents (
+    DocumentID INT PRIMARY KEY AUTO_INCREMENT,
+    ProjectID INT NOT NULL,
+    FileName VARCHAR(255) NOT NULL,
+    FilePath VARCHAR(255) NOT NULL,
+    UploadDate DATE,
+    UploadedBy INT NOT NULL,
+    DocumentType VARCHAR(50)  -- Add a field to categorize document types (e.g., Design, Requirements, etc.)
+);
+
+-- Project Dependencies Table (New)
+CREATE TABLE project_dependencies (
+    DependencyID INT PRIMARY KEY AUTO_INCREMENT,
+    ProjectID INT NOT NULL,
+    DependsOnProjectID INT NOT NULL,
+    FOREIGN KEY (ProjectID) REFERENCES projects(ProjectID),
+    FOREIGN KEY (DependsOnProjectID) REFERENCES projects(ProjectID)
+);
+
+-- Task Dependencies Table (New)
+CREATE TABLE task_dependencies (
+    DependencyID INT PRIMARY KEY AUTO_INCREMENT,
+    TaskID INT NOT NULL,
+    DependsOnTaskID INT NOT NULL,
+    FOREIGN KEY (TaskID) REFERENCES tasks(TaskID),
+    FOREIGN KEY (DependsOnTaskID) REFERENCES tasks(TaskID)
+);
+
+-- Comments Table (New)
+CREATE TABLE comments (
+    CommentID INT PRIMARY KEY AUTO_INCREMENT,
+    ProjectID INT NOT NULL,  -- Allow comments on projects
+    TaskID INT,  -- Allow comments on tasks (optional)
+    UserID INT NOT NULL,
+    CommentText TEXT NOT NULL,
+    CommentDate DATETIME NOT NULL,
+    FOREIGN KEY (ProjectID) REFERENCES projects(ProjectID),
+    FOREIGN KEY (TaskID) REFERENCES tasks(TaskID),
+    FOREIGN KEY (UserID) REFERENCES users(UserID)
+);
+
+-- Add foreign key from tasks to projects
+ALTER TABLE tasks ADD FOREIGN KEY (ProjectID) REFERENCES projects(ProjectID);
+
+-- Add foreign key from milestones to projects
+ALTER TABLE milestones ADD FOREIGN KEY (ProjectID) REFERENCES projects(ProjectID);
+
+-- Add foreign key from documents to projects
+ALTER TABLE documents ADD FOREIGN KEY (ProjectID) REFERENCES projects(ProjectID);
+
+-- Add foreign key from tasks to users
+ALTER TABLE tasks ADD FOREIGN KEY (AssignedTo) REFERENCES users(UserID);
+
+-- Add foreign key from documents to users
+ALTER TABLE documents ADD FOREIGN KEY (UploadedBy) REFERENCES users(UserID);

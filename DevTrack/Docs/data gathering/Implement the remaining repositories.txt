@@ -1,0 +1,81 @@
+1. Implement the remaining repositories
+
+You've already created the basic structure for several repositories (MilestoneRepository, UserRepository, etc.). Now, it's time to implement the CRUD (Create, Read, Update, Delete) methods for each of these repositories.
+Follow the same pattern you used for ProjectRepository and TaskRepository:
+Use parameterized SQL queries to prevent SQL injection vulnerabilities.
+Implement proper error handling using try-catch blocks.
+Ensure that all methods have a guaranteed return value (even in case of errors).
+Consider using the readonly keyword for the connection string and the using statement for resource management.
+2. Design the user interface (UI)
+
+Start designing the UI for your DevTrack application using WPF (Windows Presentation Foundation).
+Create the main window with a menu, toolbar, and a central area to display different views.
+Design views for managing each entity (projects, tasks, milestones, users, etc.).
+Consider using data binding to connect your UI elements to the data from your repositories.
+3. Implement the business logic layer (BLL)
+
+Create a BLL project and add service classes to encapsulate the business logic for your application.
+These service classes will interact with the DAL repositories to retrieve and manipulate data.
+Implement any business rules, validation, and calculations required for your application's functionality.
+4. Connect the UI to the backend
+
+In your WPF views, handle UI events (button clicks, menu selections, etc.) to trigger actions in your BLL and DAL.
+Use data binding to display data from your repositories in the UI and to update the data when the user interacts with the UI.
+5. Testing and refinement
+
+Thoroughly test your application at each stage of development.
+Write unit tests for your BLL and DAL code.
+Perform user acceptance testing (UAT) to get feedback from users.
+Refine your code, UI, and application logic based on testing and feedback.
+Example: Implementing MilestoneRepository
+
+C#
+// MilestoneRepository.cs
+using DevTrack.Models;
+using MySql.Data.MySqlClient;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+
+namespace DevTrack.Repositories
+{
+    public class MilestoneRepository
+    {
+        private readonly string connectionString = ConfigurationManager.ConnectionStrings["DevTrackConnection"].ConnectionString;
+
+        public List<Milestone> GetAllMilestones()
+        {
+            var milestones = new List<Milestone>();
+
+            try
+            {
+                using (var connection = new MySqlConnection(connectionString))
+                {
+                    string query = "SELECT * FROM milestones";
+                    using var command = new MySqlCommand(query, connection);
+
+                    connection.Open();
+                    using var reader = command.ExecuteReader();
+
+                    while (reader.Read())   
+
+                    {
+                        milestones.Add(new Milestone(reader));
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine($"Error getting all milestones: {ex.Message}");
+                return new List<Milestone>(); // Return an empty list in case of an error
+            }
+
+            return milestones; // Always return the list, even if it's empty
+        }
+
+        // ... (Implement CreateMilestone, UpdateMilestone, and DeleteMilestone methods) ...
+    }
+}
+Use code with caution.
+
+I'm here to help you with any specific questions or challenges you face during these steps. Feel free to ask for code examples, explanations, or guidance on any aspect of the development process. Let's continue building DevTrack together!

@@ -1,0 +1,114 @@
+Absolutely! Let's create the MySQL database for DevTrack. Here are the steps:
+
+**1. Connect to MySQL:**
+
+Open a command prompt or terminal and connect to your MySQL server. You'll need the server's hostname, username, and password.
+
+**2. Create the Database:**
+
+Once connected, execute the following command to create the database:
+
+```
+CREATE DATABASE devtrack;
+```
+
+This will create a new database named "devtrack".
+
+**3. Select the Database:**
+
+Before we can start creating tables, we need to select the "devtrack" database:
+
+```
+USE devtrack;
+```
+
+**4. Create the Tables:**
+
+Now, let's create the tables we defined earlier:
+
+```
+CREATE TABLE projects (
+    ProjectID INT PRIMARY KEY,
+    ProjectName VARCHAR(255) NOT NULL,
+    ProjectStage VARCHAR(20) NOT NULL,
+    ProjectManager INT NOT NULL,
+    StartDate DATE,
+    EstimatedCompletionDate DATE,
+    Budget DECIMAL(10, 2),
+    Description TEXT,
+    Status VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE tasks (
+    TaskID INT PRIMARY KEY,
+    ProjectID INT NOT NULL,
+    TaskName VARCHAR(255) NOT NULL,
+    Description TEXT,
+    AssignedTo INT NOT NULL,
+    DueDate DATE,
+    Status VARCHAR(20) NOT NULL,
+    Priority INT
+);
+
+CREATE TABLE milestones (
+    MilestoneID INT PRIMARY KEY,
+    ProjectID INT NOT NULL,
+    MilestoneName VARCHAR(255) NOT NULL,
+    Description TEXT,
+    TargetDate DATE,
+    Status VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE users (
+    UserID INT PRIMARY KEY,
+    UserName VARCHAR(255) NOT NULL,
+    Email VARCHAR(255) NOT NULL,
+    Role VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE documents (
+    DocumentID INT PRIMARY KEY,
+    ProjectID INT NOT NULL,
+    FileName VARCHAR(255) NOT NULL,
+    FilePath VARCHAR(255) NOT NULL,
+    UploadDate DATE,
+    UploadedBy INT NOT NULL
+);
+```
+
+This creates the tables with the specified columns and data types.
+
+**5. Define Relationships:**
+
+To establish the relationships between tables, we need to add foreign keys. Here's how to do it:
+
+```
+-- Add foreign key from tasks to projects
+ALTER TABLE tasks ADD FOREIGN KEY (ProjectID) REFERENCES projects(ProjectID);
+
+-- Add foreign key from milestones to projects
+ALTER TABLE milestones ADD FOREIGN KEY (ProjectID) REFERENCES projects(ProjectID);
+
+-- Add foreign key from documents to projects
+ALTER TABLE documents ADD FOREIGN KEY (ProjectID) REFERENCES projects(ProjectID);
+
+-- Add foreign key from tasks to users
+ALTER TABLE tasks ADD FOREIGN KEY (AssignedTo) REFERENCES users(UserID);
+
+-- Add foreign key from documents to users
+ALTER TABLE documents ADD FOREIGN KEY (UploadedBy) REFERENCES users(UserID);
+```
+
+This defines the relationships between projects, tasks, milestones, users, and documents.
+
+**6. Grant Permissions (Optional):**
+
+If you have multiple users accessing the database, you may need to grant them appropriate permissions to create, read, update, and delete data. This typically involves creating user accounts and assigning them roles.
+
+**7. Test the Database:**
+
+To ensure everything is working correctly, try inserting some sample data into the tables and querying the data to verify the relationships and data integrity.
+
+That's it! You've successfully created the MySQL database for DevTrack. You can now start developing the backend to interact with this database and build the user interface.
+
+Let me know if you have any questions or need help with the next steps.

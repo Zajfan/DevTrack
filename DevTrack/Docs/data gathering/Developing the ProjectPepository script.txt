@@ -1,0 +1,38 @@
+        // ... (Add UpdateTask and DeleteTask methods) ...
+    }
+
+    // MilestoneRepository.cs
+    public class MilestoneRepository
+    {
+        // ... (Implement CRUD methods for Milestones) ...
+    }
+
+    // UserRepository.cs
+    public class UserRepository
+    {
+        // ... (Implement CRUD methods for Users) ...
+    }
+
+    // ... (Other repository classes for Documents, etc.) ...
+}
+
+// TaskRepository.cs (Example)
+public class TaskRepository
+    {
+        // ... (Similar structure to ProjectRepository with CRUD methods for Tasks) ...
+    }
+
+    // MilestoneRepository.cs (Example)
+    public class MilestoneRepository
+    {
+        // ... (Similar structure to ProjectRepository with CRUD methods for Milestones) ...
+    }
+
+    // UserRepository.cs (Example)
+    public class UserRepository
+    {
+        // ... (Similar structure to ProjectRepository with CRUD methods for Users) ...
+    }
+
+    // ... (Repositories for other entities) ...
+}
