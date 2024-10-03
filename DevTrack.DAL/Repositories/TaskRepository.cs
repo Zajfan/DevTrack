@@ -1,4 +1,10 @@
 // TaskRepository.cs
+using DevTrack.DAL.Models;
+using MySql.Data.MySqlClient;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
 namespace DevTrack.DAL.Repositories
 {
     public class TaskRepository : BaseRepository
