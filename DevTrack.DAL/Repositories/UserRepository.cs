@@ -1,9 +1,4 @@
-using DevTrack.Models;
-using MySql.Data.MySqlClient;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-
+// UserRepository.cs
 namespace DevTrack.DAL.Repositories
 {
     public class UserRepository : BaseRepository

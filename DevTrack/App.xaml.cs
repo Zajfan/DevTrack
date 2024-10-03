@@ -1,5 +1,4 @@
-﻿using System.Configuration;
-using System.Data;
+﻿// App.xaml.cs
 using System.Windows;
 
 namespace DevTrack
