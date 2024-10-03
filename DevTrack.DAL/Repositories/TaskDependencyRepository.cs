@@ -11,14 +11,14 @@ namespace DevTrack.DAL.Repositories
 
         public async Task<List<TaskDependency>> GetAllTaskDependenciesAsync()
         {
-            List<TaskDependency> dependencies = new List<TaskDependency>();
+            List<TaskDependency> dependencies = new();
 
             try
             {
                 using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM task_dependencies";
-                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new(query, connection);
 
                     await connection.OpenAsync();
                     using var reader = await command.ExecuteReaderAsync();
@@ -46,7 +46,7 @@ namespace DevTrack.DAL.Repositories
                 {
                     string query = "INSERT INTO task_dependencies (TaskID, DependsOnTaskID) " +
                                    "VALUES (@TaskID, @DependsOnTaskID)";
-                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new(query, connection);
                     command.Parameters.AddWithValue("@TaskID", dependency.TaskID);
                     command.Parameters.AddWithValue("@DependsOnTaskID", dependency.DependsOnTaskID);
 
@@ -69,7 +69,7 @@ namespace DevTrack.DAL.Repositories
                 {
                     string query = "UPDATE task_dependencies SET TaskID = @TaskID, DependsOnTaskID = @DependsOnTaskID " +
                                    "WHERE DependencyID = @DependencyID";
-                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new(query, connection);
                     command.Parameters.AddWithValue("@TaskID", dependency.TaskID);
                     command.Parameters.AddWithValue("@DependsOnTaskID", dependency.DependsOnTaskID);
                     command.Parameters.AddWithValue("@DependencyID", dependency.DependencyID);
@@ -92,7 +92,7 @@ namespace DevTrack.DAL.Repositories
                 using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "DELETE FROM task_dependencies WHERE DependencyID = @DependencyID";
-                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new(query, connection);
                     command.Parameters.AddWithValue("@DependencyID", dependencyId);
 
                     await connection.OpenAsync();

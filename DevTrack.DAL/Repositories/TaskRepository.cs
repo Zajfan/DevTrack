@@ -3,7 +3,7 @@ namespace DevTrack.DAL.Repositories
 {
     public class TaskRepository : BaseRepository
     {
-        private readonly TaskMapper taskMapper = new TaskMapper();
+        private readonly TaskMapper taskMapper = new();
 
         public TaskRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
         {
@@ -11,14 +11,14 @@ namespace DevTrack.DAL.Repositories
 
         public async Task<List<Task>> GetAllTasksAsync()
         {
-            List<Task> tasks = new List<Task>();
+            List<Task> tasks = new();
 
             try
             {
                 using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM tasks";
-                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new(query, connection);
 
                     await connection.OpenAsync();
                     using var reader = await command.ExecuteReaderAsync();
@@ -40,14 +40,14 @@ namespace DevTrack.DAL.Repositories
 
         public async Task<List<Task>> GetTasksByProjectIdAsync(int projectId)
         {
-            List<Task> tasks = new List<Task>();
+            List<Task> tasks = new();
 
             try
             {
                 using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM tasks WHERE ProjectID = @ProjectID";
-                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new(query, connection);
                     object value = command.Parameters.AddWithValue("@ProjectID", projectId);
 
                     await connection.OpenAsync();

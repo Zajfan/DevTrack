@@ -22,6 +22,11 @@ namespace DevTrack.DAL.Repositories
 
         public object Parameters { get; internal set; }
 
+        internal async Task ExecuteNonQueryAsync()
+        {
+            throw new NotImplementedException();
+        }
+
         internal async Task ExecuteReaderAsync()
         {
             throw new NotImplementedException();

@@ -5,7 +5,7 @@ namespace DevTrack.DAL.Repositories
 {
     public class ProjectRepository : BaseRepository
     {
-        private readonly ProjectMapper projectMapper = new ProjectMapper();
+        private readonly ProjectMapper projectMapper = new();
 
         public ProjectRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
         {
@@ -13,14 +13,14 @@ namespace DevTrack.DAL.Repositories
 
         public async Task<List<Project>> GetAllProjectsAsync()
         {
-            List<Project> projects = new List<Project>();
+            List<Project> projects = new();
 
             try
             {
                 using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM projects";
-                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new(query, connection);
 
                     await connection.OpenAsync();
                     using var reader = await command.ExecuteReaderAsync();

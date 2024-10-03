@@ -11,14 +11,14 @@ namespace DevTrack.DAL.Repositories
 
         public async Task<List<User>> GetAllUsersAsync()
         {
-            List<User> users = new List<User>();
+            List<User> users = new();
 
             try
             {
                 using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM users";
-                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new(query, connection);
 
                     await connection.OpenAsync();
                     using var reader = await command.ExecuteReaderAsync();
@@ -46,7 +46,7 @@ namespace DevTrack.DAL.Repositories
                 {
                     string query = "INSERT INTO users (UserName, Email, Role, Department) " +
                                    "VALUES (@UserName, @Email, @Role, @Department)";
-                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new(query, connection);
                     command.Parameters.AddWithValue("@UserName", user.UserName);
                     command.Parameters.AddWithValue("@Email", user.Email);
                     command.Parameters.AddWithValue("@Role", user.Role);
@@ -71,7 +71,7 @@ namespace DevTrack.DAL.Repositories
                 {
                     string query = "UPDATE users SET UserName = @UserName, Email = @Email, Role = @Role, Department = @Department " +
                                    "WHERE UserID = @UserID";
-                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new(query, connection);
                     command.Parameters.AddWithValue("@UserName", user.UserName);
                     command.Parameters.AddWithValue("@Email", user.Email);
                     command.Parameters.AddWithValue("@Role", user.Role);
@@ -96,7 +96,7 @@ namespace DevTrack.DAL.Repositories
                 using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "DELETE FROM users WHERE UserID = @UserID";
-                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new(query, connection);
                     command.Parameters.AddWithValue("@UserID", userId);
 
                     await connection.OpenAsync();

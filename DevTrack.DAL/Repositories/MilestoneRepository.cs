@@ -19,7 +19,7 @@ namespace DevTrack.DAL.Repositories
                 {
                     string query = "INSERT INTO milestones (ProjectID, MilestoneName, Description, TargetDate, Status, CompletedDate) " +
                                    "VALUES (@ProjectID, @MilestoneName, @Description, @TargetDate, @Status, @CompletedDate)";
-                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new(query, connection);
                     command.Parameters.AddWithValue("@ProjectID", milestone.ProjectID);
                     command.Parameters.AddWithValue("@MilestoneName", milestone.MilestoneName);
                     command.Parameters.AddWithValue("@Description", milestone.Description);
@@ -47,7 +47,7 @@ namespace DevTrack.DAL.Repositories
                     string query = "UPDATE milestones SET ProjectID = @ProjectID, MilestoneName = @MilestoneName, Description = @Description, " +
                                    "TargetDate = @TargetDate, Status = @Status, CompletedDate = @CompletedDate " +
                                    "WHERE MilestoneID = @MilestoneID";
-                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new(query, connection);
                     command.Parameters.AddWithValue("@ProjectID", milestone.ProjectID);
                     command.Parameters.AddWithValue("@MilestoneName", milestone.MilestoneName);
                     command.Parameters.AddWithValue("@Description", milestone.Description);
@@ -74,7 +74,7 @@ namespace DevTrack.DAL.Repositories
                 using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "DELETE FROM milestones WHERE MilestoneID = @MilestoneID";
-                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new(query, connection);
                     command.Parameters.AddWithValue("@MilestoneID", milestoneId);
 
                     await connection.OpenAsync();
