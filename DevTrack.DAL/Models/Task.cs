@@ -1,4 +1,5 @@
 // Task.cs
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace DevTrack.DAL.Models
@@ -34,21 +35,5 @@ namespace DevTrack.DAL.Models
         public int? ActualTime { get; set; }
 
         public int? DependsOnTaskId { get; set; }
-
-        public Task() { }
-
-        public Task(MySqlDataReader reader)
-        {
-            TaskID = reader.GetInt32("TaskID");
-            ProjectID = reader.GetInt32("ProjectID");
-            TaskName = reader.GetString("TaskName");
-            Description = reader.IsDBNull(reader.GetOrdinal("Description")) ? null : reader.GetString("Description");
-            AssignedTo = reader.GetInt32("AssignedTo");
-            DueDate = reader.IsDBNull(reader.GetOrdinal("DueDate")) ? (DateTime?)null : reader.GetDateTime("DueDate");
-            Status = reader.GetString("Status");
-            Priority = reader.IsDBNull(reader.GetOrdinal("Priority")) ? (int?)null : reader.GetInt32("Priority");
-            EstimatedTime = reader.IsDBNull(reader.GetOrdinal("EstimatedTime")) ? (int?)null : reader.GetInt32("EstimatedTime");
-            ActualTime = reader.IsDBNull(reader.GetOrdinal("ActualTime")) ? (int?)null : reader.GetInt32("ActualTime");
-        }
     }
 }

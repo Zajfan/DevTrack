@@ -1,4 +1,9 @@
-// ProjectDependencyRepository.cs
+using DevTrack.Models;
+using MySql.Data.MySqlClient;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
 namespace DevTrack.DAL.Repositories
 {
     public class ProjectDependencyRepository : BaseRepository
@@ -11,14 +16,14 @@ namespace DevTrack.DAL.Repositories
 
         public async Task<List<ProjectDependency>> GetAllProjectDependenciesAsync()
         {
-            List<ProjectDependency> dependencies = new();
+            var dependencies = new List<ProjectDependency>();
 
             try
             {
-                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM project_dependencies";
-                    using MySqlCommand command = new(query, connection);
+                    using var command = new MySqlCommand(query, connection);
 
                     await connection.OpenAsync();
                     using var reader = await command.ExecuteReaderAsync();
@@ -42,11 +47,11 @@ namespace DevTrack.DAL.Repositories
         {
             try
             {
-                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "INSERT INTO project_dependencies (ProjectID, DependsOnProjectID) " +
                                    "VALUES (@ProjectID, @DependsOnProjectID)";
-                    using MySqlCommand command = new(query, connection);
+                    using var command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@ProjectID", dependency.ProjectID);
                     command.Parameters.AddWithValue("@DependsOnProjectID", dependency.DependsOnProjectID);
 
@@ -65,11 +70,11 @@ namespace DevTrack.DAL.Repositories
         {
             try
             {
-                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "UPDATE project_dependencies SET ProjectID = @ProjectID, DependsOnProjectID = @DependsOnProjectID " +
                                    "WHERE DependencyID = @DependencyID";
-                    using MySqlCommand command = new(query, connection);
+                    using var command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@ProjectID", dependency.ProjectID);
                     command.Parameters.AddWithValue("@DependsOnProjectID", dependency.DependsOnProjectID);
                     command.Parameters.AddWithValue("@DependencyID", dependency.DependencyID);
@@ -89,10 +94,10 @@ namespace DevTrack.DAL.Repositories
         {
             try
             {
-                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "DELETE FROM project_dependencies WHERE DependencyID = @DependencyID";
-                    using MySqlCommand command = new(query, connection);
+                    using var command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@DependencyID", dependencyId);
 
                     await connection.OpenAsync();

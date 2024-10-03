@@ -1,5 +1,6 @@
-// IDbConnectionFactory.cs
-namespace DevTrack.DAL.Repositories
+using MySql.Data.MySqlClient;
+
+namespace DevTrack.DAL.Repositories // Corrected namespace
 {
     public interface IDbConnectionFactory
     {

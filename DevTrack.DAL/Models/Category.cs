@@ -10,13 +10,5 @@ namespace DevTrack.DAL.Models
         [Required(ErrorMessage = "Category Name is required.")]
         [StringLength(255, ErrorMessage = "Category Name cannot exceed 255 characters.")]
         public string CategoryName { get; set; }
-
-        public Category() { }
-
-        public Category(MySqlDataReader reader)
-        {
-            CategoryID = reader.GetInt32("CategoryID");
-            CategoryName = reader.GetString("CategoryName");
-        }
     }
 }

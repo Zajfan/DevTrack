@@ -1,9 +1,14 @@
-// TaskRepository.cs
+using DevTrack.Models;
+using MySql.Data.MySqlClient;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
 namespace DevTrack.DAL.Repositories
 {
     public class TaskRepository : BaseRepository
     {
-        private readonly TaskMapper taskMapper = new();
+        private readonly TaskMapper taskMapper = new TaskMapper();
 
         public TaskRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
         {
@@ -11,14 +16,14 @@ namespace DevTrack.DAL.Repositories
 
         public async Task<List<Task>> GetAllTasksAsync()
         {
-            List<Task> tasks = new();
+            var tasks = new List<Task>();
 
             try
             {
                 using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM tasks";
-                    using MySqlCommand command = new(query, connection);
+                    using var command = new MySqlCommand(query, connection);
 
                     await connection.OpenAsync();
                     using var reader = await command.ExecuteReaderAsync();
@@ -40,15 +45,15 @@ namespace DevTrack.DAL.Repositories
 
         public async Task<List<Task>> GetTasksByProjectIdAsync(int projectId)
         {
-            List<Task> tasks = new();
+            var tasks = new List<Task>();
 
             try
             {
                 using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM tasks WHERE ProjectID = @ProjectID";
-                    using MySqlCommand command = new(query, connection);
-                    object value = command.Parameters.AddWithValue("@ProjectID", projectId);
+                    using var command = new MySqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@ProjectID", projectId);
 
                     await connection.OpenAsync();
                     using var reader = await command.ExecuteReaderAsync();

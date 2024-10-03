@@ -1,3 +1,8 @@
+using DevTrack.Models;
+using MySql.Data.MySqlClient;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace DevTrack.DAL.Repositories
 {
@@ -17,12 +22,11 @@ namespace DevTrack.DAL.Repositories
             {
                 using (var connection = connectionFactory.CreateConnection())
                 {
-                    MySqlCommand mySqlCommand = new(query, connection);
-                    using MySqlCommand command = mySqlCommand;
+                    using var command = new MySqlCommand(query, connection);
 
-                    foreach ((string name, object value) in parameters)
+                    foreach (var (name, value) in parameters)
                     {
-                        object value1 = command.Parameters.AddWithValue(name, value);
+                        command.Parameters.AddWithValue(name, value);
                     }
 
                     await connection.OpenAsync();
@@ -76,11 +80,6 @@ namespace DevTrack.DAL.Repositories
                 ("@RepositoryURL", project.RepositoryURL),
                 ("@CategoryID", project.CategoryID),
                 ("@ProjectID", project.ProjectID));
-        }
-
-        private async Task ExecuteNonQueryAsync(string query, (string, object) value1, (string, object) value2, (string, object) value3, (string, object) value4, (string, object) value5, (string, object) value6, (string, object) value7, (string, object) value8, (string, object) value9, (string, object) value10, (string, object) value11, (string, object) value12)
-        {
-            throw new NotImplementedException();
         }
 
         public async Task DeleteProjectAsync(int projectId)
