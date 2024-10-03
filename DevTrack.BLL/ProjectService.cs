@@ -7,6 +7,9 @@ namespace DevTrack.BLL
 {
     public class ProjectService
     {
+        private readonly ProjectRepository projectRepository;
+        private readonly TaskRepository taskRepository;
+
         // Primary constructor for dependency injection
         public ProjectService(ProjectRepository projectRepository, TaskRepository taskRepository /*, ... other repositories */)
         {
@@ -32,11 +35,4 @@ namespace DevTrack.BLL
         // ... (Other methods in ProjectService) ...
     }
 
-    // ProjectDashboardData.cs (This should be in the same file or a separate file in the BLL project)
-    public class ProjectDashboardData
-    {
-        public Project Project { get; set; }
-        public List<Task> Tasks { get; set; }
-        // ... other properties to hold relevant data
-    }
 }
