@@ -15,10 +15,16 @@ namespace DevTrack.Views
             DataContext = this;
         }
 
+        public object projectsDataGrid { get; private set; }
+
+        private void InitializeComponent()
+        {
+            throw new NotImplementedException();
+        }
+
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            projectsDataGrid.ItemsSource = await projectService.GetAllProjectsAsync();
-            // ... load data for other DataGrids (Tasks, etc.)
+            projectsDataGrid.ItemsSource = await projectService.GetAllProjectsAsync();// ... load data for other DataGrids (Tasks, etc.)
         }
     }
 }

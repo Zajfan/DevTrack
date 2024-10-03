@@ -1,5 +1,6 @@
 ﻿// ProjectService.cs
 
+
 namespace DevTrack.BLL
 {
     public class ProjectService
@@ -27,6 +28,11 @@ namespace DevTrack.BLL
                 Tasks = tasks,
                 // ... other data
             };
+        }
+
+        internal async Task GetAllProjectsAsync()
+        {
+            throw new NotImplementedException();
         }
 
         // ... (Other methods in ProjectService) ...
