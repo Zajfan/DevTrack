@@ -1,5 +1,5 @@
+// MySqlConnectionFactory.cs
 using MySql.Data.MySqlClient;
-using System.Configuration;
 
 namespace DevTrack.DAL.Repositories
 {

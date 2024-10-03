@@ -1,8 +1,5 @@
-using DevTrack.Models;
-using MySql.Data.MySqlClient;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+// ProjectRepository.cs
+using DevTrack.DAL.Models;
 
 namespace DevTrack.DAL.Repositories
 {
@@ -16,14 +13,14 @@ namespace DevTrack.DAL.Repositories
 
         public async Task<List<Project>> GetAllProjectsAsync()
         {
-            var projects = new List<Project>();
+            List<Project> projects = new List<Project>();
 
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM projects";
-                    using var command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new MySqlCommand(query, connection);
 
                     await connection.OpenAsync();
                     using var reader = await command.ExecuteReaderAsync();
@@ -43,105 +40,17 @@ namespace DevTrack.DAL.Repositories
             return projects;
         }
 
-        public async Task CreateProjectAsync(Project project)
-        {
-            try
-            {
-                using (var connection = connectionFactory.CreateConnection())
-                {
-                    string query = "INSERT INTO projects (ProjectName, ProjectStage, ProjectManager, StartDate, EstimatedCompletionDate, Budget, Description, Status, Priority, RepositoryURL, CategoryID) " +
-                                   "VALUES (@ProjectName, @ProjectStage, @ProjectManager, @StartDate, @EstimatedCompletionDate, @Budget, @Description, @Status, @Priority, @RepositoryURL, @CategoryID)";
-                    using var command = new MySqlCommand(query, connection);
-                    command.Parameters.AddWithValue("@ProjectName", project.ProjectName);
-                    command.Parameters.AddWithValue("@ProjectStage", project.ProjectStage);
-                    command.Parameters.AddWithValue("@ProjectManager", project.ProjectManager);
-                    command.Parameters.AddWithValue("@StartDate", project.StartDate);
-                    command.Parameters.AddWithValue("@EstimatedCompletionDate", project.EstimatedCompletionDate);
-                    command.Parameters.AddWithValue("@Budget", project.Budget);
-                    command.Parameters.AddWithValue("@Description", project.Description);
-                    command.Parameters.AddWithValue("@Status", project.Status);
-                    command.Parameters.AddWithValue("@Priority", project.Priority);
-                    command.Parameters.AddWithValue("@RepositoryURL", project.RepositoryURL);
-                    command.Parameters.AddWithValue("@CategoryID", project.CategoryID);
-
-                    await connection.OpenAsync();
-                    await command.ExecuteNonQueryAsync();
-                }
-            }
-            catch (MySqlException ex)
-            {
-                Console.WriteLine($"Error creating project: {ex.Message}");
-                throw; // Re-throw the exception after logging, or handle it appropriately
-            }
-        }
-
-        public async Task UpdateProjectAsync(Project project)
-        {
-            try
-            {
-                using (var connection = connectionFactory.CreateConnection())
-                {
-                    string query = "UPDATE projects SET ProjectName = @ProjectName, ProjectStage = @ProjectStage, ProjectManager = @ProjectManager, " +
-                                   "StartDate = @StartDate, EstimatedCompletionDate = @EstimatedCompletionDate, Budget = @Budget, Description = @Description, " +
-                                   "Status = @Status, Priority = @Priority, RepositoryURL = @RepositoryURL, CategoryID = @CategoryID " +
-                                   "WHERE ProjectID = @ProjectID";
-                    using var command = new MySqlCommand(query, connection);
-                    command.Parameters.AddWithValue("@ProjectName", project.ProjectName);
-                    command.Parameters.AddWithValue("@ProjectStage", project.ProjectStage);
-                    command.Parameters.AddWithValue("@ProjectManager", project.ProjectManager);
-                    command.Parameters.AddWithValue("@StartDate", project.StartDate);
-                    command.Parameters.AddWithValue("@EstimatedCompletionDate", project.EstimatedCompletionDate);
-                    command.Parameters.AddWithValue("@Budget", project.Budget);
-                    command.Parameters.AddWithValue("@Description", project.Description);
-                    command.Parameters.AddWithValue("@Status", project.Status);
-                    command.Parameters.AddWithValue("@Priority", project.Priority);
-                    command.Parameters.AddWithValue("@RepositoryURL", project.RepositoryURL);
-                    command.Parameters.AddWithValue("@CategoryID", project.CategoryID);
-                    command.Parameters.AddWithValue("@ProjectID", project.ProjectID);
-
-                    await connection.OpenAsync();
-                    await command.ExecuteNonQueryAsync();
-                }
-            }
-            catch (MySqlException ex)
-            {
-                Console.WriteLine($"Error updating project: {ex.Message}");
-                throw; // Re-throw the exception after logging, or handle it appropriately
-            }
-        }
-
-        public async Task DeleteProjectAsync(int projectId)
-        {
-            try
-            {
-                using (var connection = connectionFactory.CreateConnection())
-                {
-                    string query = "DELETE FROM projects WHERE ProjectID = @ProjectID";
-                    using var command = new MySqlCommand(query, connection);
-                    command.Parameters.AddWithValue("@ProjectID", projectId);
-
-                    await connection.OpenAsync();
-                    await command.ExecuteNonQueryAsync();
-                }
-            }
-            catch (MySqlException ex)
-            {
-                Console.WriteLine($"Error deleting project: {ex.Message}");
-                throw; // Re-throw the exception after logging, or handle it appropriately
-            }
-        }
-
         public async Task<Project> GetProjectByIdAsync(int projectId)
         {
             Project project = null; // Initialize project to null
 
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM projects WHERE ProjectID = @ProjectID";
-                    using var command = new MySqlCommand(query, connection);
-                    command.Parameters.AddWithValue("@ProjectID", projectId);
+                    using MySqlCommand command = new(query, connection);
+                    object value = command.Parameters.AddWithValue("@ProjectID", projectId);
 
                     await connection.OpenAsync();
 
@@ -161,12 +70,37 @@ namespace DevTrack.DAL.Repositories
 
             return project; // Return the project (or null if not found)
         }
-            catch (MySqlException ex)
+            catch NewStruct1
             {
-                Console.WriteLine($"Error getting project by ID: {ex.Message}");
+                Console.WriteLineNewStruct$"Error getting project by ID: {ex.Message}");
             }
 
             return null; // Or throw an exception if appropriate
+internal record struct NewStruct(object Item1, object Item2)
+    {
+        public static implicit operator (object, object)(NewStruct value)
+        {
+            return (value.Item1, value.Item2);
         }
+
+        public static implicit operator NewStruct((object, object) value)
+        {
+            return new NewStruct(value.Item1, value.Item2);
+        }
+    }
+
+    internal record struct NewStruct1(MySqlException ex, object Item2)
+    {
+        public static implicit operator (MySqlException ex, object)(NewStruct1 value)
+        {
+            return (value.ex, value.Item2);
+        }
+
+        public static implicit operator NewStruct1((MySqlException ex, object) value)
+        {
+            return new NewStruct1(value.ex, value.Item2);
+        }
+    }
+}
     }
 }

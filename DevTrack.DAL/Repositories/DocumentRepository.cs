@@ -1,9 +1,5 @@
-using DevTrack.Models;
-using MySql.Data.MySqlClient;
-using System;
-using System.Collections.Generic;
+// DocumentRepository.cs
 using System.Reflection.Metadata;
-using System.Threading.Tasks;
 
 namespace DevTrack.DAL.Repositories
 {
@@ -17,14 +13,14 @@ namespace DevTrack.DAL.Repositories
 
         public async Task<List<Document>> GetAllDocumentsAsync()
         {
-            var documents = new List<Document>();
+            List<Document> documents = new List<Document>();
 
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM documents";
-                    using var command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new MySqlCommand(query, connection);
 
                     await connection.OpenAsync();
                     using var reader = await command.ExecuteReaderAsync();
@@ -48,11 +44,11 @@ namespace DevTrack.DAL.Repositories
         {
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "INSERT INTO documents (ProjectID, FileName, FilePath, UploadDate, UploadedBy, DocumentType) " +
                                    "VALUES (@ProjectID, @FileName, @FilePath, @UploadDate, @UploadedBy, @DocumentType)";
-                    using var command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@ProjectID", document.ProjectID);
                     command.Parameters.AddWithValue("@FileName", document.FileName);
                     command.Parameters.AddWithValue("@FilePath", document.FilePath);
@@ -75,12 +71,12 @@ namespace DevTrack.DAL.Repositories
         {
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "UPDATE documents SET ProjectID = @ProjectID, FileName = @FileName, FilePath = @FilePath, " +
                                    "UploadDate = @UploadDate, UploadedBy = @UploadedBy, DocumentType = @DocumentType " +
                                    "WHERE DocumentID = @DocumentID";
-                    using var command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@ProjectID", document.ProjectID);
                     command.Parameters.AddWithValue("@FileName", document.FileName);
                     command.Parameters.AddWithValue("@FilePath", document.FilePath);
@@ -104,10 +100,10 @@ namespace DevTrack.DAL.Repositories
         {
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "DELETE FROM documents WHERE DocumentID = @DocumentID";
-                    using var command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@DocumentID", documentId);
 
                     await connection.OpenAsync();

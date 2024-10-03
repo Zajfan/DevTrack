@@ -1,4 +1,5 @@
-﻿using DevTrack.BLL;
+﻿// MainWindow.xaml.cs
+using DevTrack.BLL;
 using System.Windows;
 
 namespace DevTrack.Views

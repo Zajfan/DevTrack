@@ -1,3 +1,4 @@
+// Risk.cs
 public class Risk
 {
     public int RiskId { get; set; }

@@ -1,10 +1,4 @@
-using DevTrack.Models;
-using MySql.Data.MySqlClient;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-
+// CommentRepository.cs
 namespace DevTrack.DAL.Repositories
 {
     public class CommentRepository : BaseRepository
@@ -17,14 +11,14 @@ namespace DevTrack.DAL.Repositories
 
         public async Task<List<Comment>> GetAllCommentsAsync()
         {
-            var comments = new List<Comment>();
+            List<Comment> comments = new List<Comment>();
 
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM comments";
-                    using var command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new MySqlCommand(query, connection);
 
                     await connection.OpenAsync();
                     using var reader = await command.ExecuteReaderAsync();
@@ -48,11 +42,11 @@ namespace DevTrack.DAL.Repositories
         {
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "INSERT INTO comments (ProjectID, TaskID, UserID, CommentText, CommentDate) " +
                                    "VALUES (@ProjectID, @TaskID, @UserID, @CommentText, @CommentDate)";
-                    using var command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@ProjectID", comment.ProjectID);
                     command.Parameters.AddWithValue("@TaskID", comment.TaskID);
                     command.Parameters.AddWithValue("@UserID", comment.UserID);
@@ -74,12 +68,12 @@ namespace DevTrack.DAL.Repositories
         {
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "UPDATE comments SET ProjectID = @ProjectID, TaskID = @TaskID, UserID = @UserID, " +
                                    "CommentText = @CommentText, CommentDate = @CommentDate " +
                                    "WHERE CommentID = @CommentID";
-                    using var command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@ProjectID", comment.ProjectID);
                     command.Parameters.AddWithValue("@TaskID", comment.TaskID);
                     command.Parameters.AddWithValue("@UserID", comment.UserID);
@@ -102,10 +96,10 @@ namespace DevTrack.DAL.Repositories
         {
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "DELETE FROM comments WHERE CommentID = @CommentID";
-                    using var command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@CommentID", commentId);
 
                     await connection.OpenAsync();

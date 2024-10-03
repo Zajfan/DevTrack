@@ -1,5 +1,5 @@
+// Task.cs
 using MySql.Data.MySqlClient;
-using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace DevTrack.DAL.Models

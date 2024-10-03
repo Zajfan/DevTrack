@@ -1,3 +1,4 @@
+// Category.cs
 using MySql.Data.MySqlClient;
 using System.ComponentModel.DataAnnotations;
 

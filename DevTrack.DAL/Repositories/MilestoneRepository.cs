@@ -1,9 +1,4 @@
-using DevTrack.Models;
-using MySql.Data.MySqlClient;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-
+// MilestoneRepository.cs
 namespace DevTrack.DAL.Repositories
 {
     public class MilestoneRepository : BaseRepository
@@ -20,11 +15,11 @@ namespace DevTrack.DAL.Repositories
         {
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "INSERT INTO milestones (ProjectID, MilestoneName, Description, TargetDate, Status, CompletedDate) " +
                                    "VALUES (@ProjectID, @MilestoneName, @Description, @TargetDate, @Status, @CompletedDate)";
-                    using var command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@ProjectID", milestone.ProjectID);
                     command.Parameters.AddWithValue("@MilestoneName", milestone.MilestoneName);
                     command.Parameters.AddWithValue("@Description", milestone.Description);
@@ -47,12 +42,12 @@ namespace DevTrack.DAL.Repositories
         {
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "UPDATE milestones SET ProjectID = @ProjectID, MilestoneName = @MilestoneName, Description = @Description, " +
                                    "TargetDate = @TargetDate, Status = @Status, CompletedDate = @CompletedDate " +
                                    "WHERE MilestoneID = @MilestoneID";
-                    using var command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@ProjectID", milestone.ProjectID);
                     command.Parameters.AddWithValue("@MilestoneName", milestone.MilestoneName);
                     command.Parameters.AddWithValue("@Description", milestone.Description);
@@ -76,10 +71,10 @@ namespace DevTrack.DAL.Repositories
         {
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "DELETE FROM milestones WHERE MilestoneID = @MilestoneID";
-                    using var command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new MySqlCommand(query, connection);
                     command.Parameters.AddWithValue("@MilestoneID", milestoneId);
 
                     await connection.OpenAsync();

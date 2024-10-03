@@ -1,9 +1,4 @@
-using DevTrack.Models;
-using MySql.Data.MySqlClient;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-
+// TaskRepository.cs
 namespace DevTrack.DAL.Repositories
 {
     public class TaskRepository : BaseRepository
@@ -16,14 +11,14 @@ namespace DevTrack.DAL.Repositories
 
         public async Task<List<Task>> GetAllTasksAsync()
         {
-            var tasks = new List<Task>();
+            List<Task> tasks = new List<Task>();
 
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM tasks";
-                    using var command = new MySqlCommand(query, connection);
+                    using MySqlCommand command = new MySqlCommand(query, connection);
 
                     await connection.OpenAsync();
                     using var reader = await command.ExecuteReaderAsync();
@@ -45,15 +40,15 @@ namespace DevTrack.DAL.Repositories
 
         public async Task<List<Task>> GetTasksByProjectIdAsync(int projectId)
         {
-            var tasks = new List<Task>();
+            List<Task> tasks = new List<Task>();
 
             try
             {
-                using (var connection = connectionFactory.CreateConnection())
+                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM tasks WHERE ProjectID = @ProjectID";
-                    using var command = new MySqlCommand(query, connection);
-                    command.Parameters.AddWithValue("@ProjectID", projectId);
+                    using MySqlCommand command = new MySqlCommand(query, connection);
+                    object value = command.Parameters.AddWithValue("@ProjectID", projectId);
 
                     await connection.OpenAsync();
 
