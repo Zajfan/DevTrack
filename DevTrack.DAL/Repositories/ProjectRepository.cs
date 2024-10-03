@@ -14,7 +14,34 @@ namespace DevTrack.DAL.Repositories
         {
         }
 
-        // ... (GetAllProjectsAsync method) ...
+        public async Task<List<Project>> GetAllProjectsAsync()
+        {
+            var projects = new List<Project>();
+
+            try
+            {
+                using (var connection = connectionFactory.CreateConnection())
+                {
+                    string query = "SELECT * FROM projects";
+                    using var command = new MySqlCommand(query, connection);
+
+                    await connection.OpenAsync();
+                    using var reader = await command.ExecuteReaderAsync();
+
+                    while (await reader.ReadAsync())
+                    {
+                        projects.Add(projectMapper.MapFromReader(reader));
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine($"Error getting all projects: {ex.Message}");
+                return new List<Project>();
+            }
+
+            return projects;
+        }
 
         public async Task CreateProjectAsync(Project project)
         {
@@ -102,6 +129,33 @@ namespace DevTrack.DAL.Repositories
                 Console.WriteLine($"Error deleting project: {ex.Message}");
                 throw; // Re-throw the exception after logging, or handle it appropriately
             }
+        }
+
+        public async Task<Project> GetProjectByIdAsync(int projectId)
+        {
+            try
+            {
+                using (var connection = connectionFactory.CreateConnection())
+                {
+                    string query = "SELECT * FROM projects WHERE ProjectID = @ProjectID";
+                    using var command = new MySqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@ProjectID", projectId);
+
+                    await connection.OpenAsync();
+                    using var reader = await command.ExecuteReaderAsync();
+
+                    if (await reader.ReadAsync())
+                    {
+                        return projectMapper.MapFromReader(reader);
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine($"Error getting project by ID: {ex.Message}");
+            }
+
+            return null; // Or throw an exception if appropriate
         }
     }
 }
