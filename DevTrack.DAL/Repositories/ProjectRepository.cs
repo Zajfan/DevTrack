@@ -133,6 +133,8 @@ namespace DevTrack.DAL.Repositories
 
         public async Task<Project> GetProjectByIdAsync(int projectId)
         {
+            Project project = null; // Initialize project to null
+
             try
             {
                 using (var connection = connectionFactory.CreateConnection())
@@ -142,14 +144,23 @@ namespace DevTrack.DAL.Repositories
                     command.Parameters.AddWithValue("@ProjectID", projectId);
 
                     await connection.OpenAsync();
+
                     using var reader = await command.ExecuteReaderAsync();
 
                     if (await reader.ReadAsync())
                     {
-                        return projectMapper.MapFromReader(reader);
+                        project = projectMapper.MapFromReader(reader);
                     }
                 }
             }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine($"Error getting project by ID: {ex.Message}");
+                // Consider logging the exception or handling it more gracefully
+            }
+
+            return project; // Return the project (or null if not found)
+        }
             catch (MySqlException ex)
             {
                 Console.WriteLine($"Error getting project by ID: {ex.Message}");

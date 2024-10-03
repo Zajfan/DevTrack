@@ -56,6 +56,7 @@ namespace DevTrack.DAL.Repositories
                     command.Parameters.AddWithValue("@ProjectID", projectId);
 
                     await connection.OpenAsync();
+
                     using var reader = await command.ExecuteReaderAsync();
 
                     while (await reader.ReadAsync())
@@ -67,7 +68,8 @@ namespace DevTrack.DAL.Repositories
             catch (MySqlException ex)
             {
                 Console.WriteLine($"Error getting tasks by project ID: {ex.Message}");
-                return new List<Task>();
+                // Consider logging the exception or handling it more gracefully
+                return new List<Task>(); // Return an empty list in case of an error
             }
 
             return tasks;
