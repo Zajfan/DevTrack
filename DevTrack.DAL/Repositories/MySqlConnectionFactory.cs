@@ -1,6 +1,4 @@
 // MySqlConnectionFactory.cs
-using MySql.Data.MySqlClient;
-
 namespace DevTrack.DAL.Repositories
 {
     public class MySqlConnectionFactory : IDbConnectionFactory

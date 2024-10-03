@@ -1,5 +1,4 @@
 using DevTrack.DAL.Models;
-using DevTrack.DAL.Repositories;
 
 // BaseRepository.cs
 namespace DevTrack.DAL.Repositories

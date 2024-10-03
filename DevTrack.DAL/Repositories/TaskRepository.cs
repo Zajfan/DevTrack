@@ -15,7 +15,7 @@ namespace DevTrack.DAL.Repositories
 
             try
             {
-                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM tasks";
                     using MySqlCommand command = new MySqlCommand(query, connection);
@@ -44,14 +44,13 @@ namespace DevTrack.DAL.Repositories
 
             try
             {
-                using (MySql.Data.MySqlClient.MySqlConnection connection = connectionFactory.CreateConnection())
+                using (var connection = connectionFactory.CreateConnection())
                 {
                     string query = "SELECT * FROM tasks WHERE ProjectID = @ProjectID";
                     using MySqlCommand command = new MySqlCommand(query, connection);
                     object value = command.Parameters.AddWithValue("@ProjectID", projectId);
 
                     await connection.OpenAsync();
-
                     using var reader = await command.ExecuteReaderAsync();
 
                     while (await reader.ReadAsync())
@@ -63,8 +62,7 @@ namespace DevTrack.DAL.Repositories
             catch (MySqlException ex)
             {
                 Console.WriteLine($"Error getting tasks by project ID: {ex.Message}");
-                // Consider logging the exception or handling it more gracefully
-                return new List<Task>(); // Return an empty list in case of an error
+                return new List<Task>();
             }
 
             return tasks;
