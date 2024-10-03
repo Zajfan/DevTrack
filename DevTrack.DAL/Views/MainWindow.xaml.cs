@@ -1,7 +1,7 @@
 ﻿using DevTrack.BLL;
 using System.Windows;
 
-namespace DevTrack
+namespace DevTrack.Views
 {
     public partial class MainWindow : Window
     {
