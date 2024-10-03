@@ -1,11 +1,11 @@
-using DevTrack.Models;
+using DevTrack.DAL.Models;
 using MySql.Data.MySqlClient;
 
 namespace DevTrack.DAL.Repositories
 {
     public class ProjectMapper
     {
-        public Project MapFromReader(MySqlDataReader reader)
+        public Project MapFromReader(MySqlDataReader reader) 
         {
             return new Project
             {
