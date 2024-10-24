@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "MainWindow.xaml.h"
+#include <winrt/Windows.Foundation.Collections.h>
 
 using namespace winrt;
 using namespace Microsoft::UI::Xaml;
@@ -11,18 +12,18 @@ namespace winrt::DevTrack::Views::implementation
         InitializeComponent();
     }
 
-    void MainWindow::OnAddProjectClick(IInspectable const&, RoutedEventArgs const&)
+    void MainWindow::OnAddProjectClick(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::RoutedEventArgs const& e)
     {
-        // Add project logic here
+        // Add your code to handle the "Add Project" button click here
     }
 
-    void MainWindow::OnEditProjectClick(IInspectable const&, RoutedEventArgs const&)
+    void MainWindow::OnEditProjectClick(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::RoutedEventArgs const& e)
     {
-        // Edit project logic here
+        // Add your code to handle the "Edit Project" button click here
     }
 
-    void MainWindow::OnDeleteProjectClick(IInspectable const&, RoutedEventArgs const&)
+    void MainWindow::OnDeleteProjectClick(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::RoutedEventArgs const& e)
     {
-        // Delete project logic here
+        // Add your code to handle the "Delete Project" button click here
     }
 }

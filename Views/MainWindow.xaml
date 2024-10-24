@@ -4,15 +4,15 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:local="using:DevTrack.Views"
+    xmlns:local="clr-namespace:DevTrack.Views"
     mc:Ignorable="d">
 
     <Grid>
         <StackPanel>
             <ListView x:Name="ProjectListView" Height="300" Margin="10"/>
-            <Button Content="Add Project" Click="OnAddProjectClick" Margin="10"/>
-            <Button Content="Edit Project" Click="OnEditProjectClick" Margin="10"/>
-            <Button Content="Delete Project" Click="OnDeleteProjectClick" Margin="10"/>
+            <Button x:Name="addProjectButton" Click="OnAddProjectClick">Add Project</Button>
+            <Button x:Name="editProjectButton" Click="OnEditProjectClick">Edit Project</Button>
+            <Button x:Name="deleteProjectButton" Click="OnDeleteProjectClick">Delete Project</Button>
         </StackPanel>
     </Grid>
 </Window>
