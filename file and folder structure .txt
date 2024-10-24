@@ -1,0 +1,21 @@
+MyWinUIApp/
+├── Models/
+│   ├── ProjectModel.h
+│   └── ProjectModel.cpp
+├── ViewModels/
+│   ├── MainViewModel.h
+│   └── MainViewModel.cpp
+├── Views/
+│   ├── MainWindow.xaml
+│   ├── MainWindow.xaml.h
+│   └── MainWindow.xaml.cpp
+├── Services/
+│   ├── ProjectService.h
+│   └── ProjectService.cpp
+├── Resources/
+│   ├── Styles.xaml
+│   └── Strings.resw
+├── App.xaml
+├── App.xaml.h
+├── App.xaml.cpp
+└── pch.h

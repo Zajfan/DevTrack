@@ -1,0 +1,7 @@
+<!-- Example resource file for localization -->
+<root>
+  <data name="AppTitle" xml:space="preserve">
+    <value>DevTrack</value>
+  </data>
+  <!-- Add other localized strings here -->
+</root>
