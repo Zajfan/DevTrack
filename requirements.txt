@@ -1,0 +1,39 @@
+# Core Dependencies
+cmake>=3.12
+c++17
+
+# Build Tools
+ninja
+clang
+llvm
+gcc
+make
+
+# Libraries
+sqlite3>=3.35.0
+opengl>=4.6
+glfw>=3.3
+glew>=2.2
+imgui>=1.89
+spdlog>=1.10.0
+nlohmann-json>=3.11.0
+
+# Testing
+googletest>=1.12.0
+
+# Development Tools
+valgrind
+clang-tidy
+cppcheck
+
+# Performance Profiling
+gprof
+perf
+
+# Documentation
+doxygen
+graphviz
+
+# Optional: Debugging
+lldb
+gdb
