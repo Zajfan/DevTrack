@@ -15,11 +15,14 @@ DevTrack is a C++ desktop application designed for efficient project management.
 ## Future Updates
 
 - **Core Language Update**: Upgrade the core programming language to C++20 for improved performance and new language features.
+- **Menu**: add more menu options.
 - **Delete Functionality**: Complete the functionality to delete project entries from DevTrack.
-- **View Project**: Implement the "View Project" functionality to display project details.
+- **View Project**: Complete the "View Project" functionality to display project details.
 - **Keyboard Shortcuts**: Add keyboard shortcuts for enhanced user navigation and efficiency.
 - **UI Adjustments**: Adjust the UI to better fit the application window and provide a more seamless experience.
 - **Themes**: Introduce themes to allow users to customize the look and feel of the application.
+- **Alternative project structure views** add treewiew, tabs, diagrams and more to allow further personal costimization.
+- **Categorization**: Implement categorization functionallity.
 - **And More**: Continuously improve and add new features based on user feedback and technological advancements.
 
 ## Technologies Used
