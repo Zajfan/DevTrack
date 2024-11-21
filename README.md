@@ -1,4 +1,7 @@
 # DevTrack Project Management Application
+## Current Version
+
+- **Version**: 0.1.0
 
 DevTrack is a C++ desktop application designed for efficient project management. It provides a user-friendly interface for creating, managing, and tracking projects and tasks.
 
