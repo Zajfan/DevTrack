@@ -1,6 +1,7 @@
 #include "../../include/data/database.h"
 #include <stdexcept>
 #include <sstream>
+#include "spdlog/spdlog.h"
 
 namespace DevTrack {
 
@@ -34,6 +35,15 @@ void Database::openDatabase() {
     if (rc != SQLITE_OK) {
         throw std::runtime_error("Cannot open database: " + std::string(sqlite3_errmsg(m_db)));
     }
+
+    // Enable UTF-8 encoding
+    char* errMsg = nullptr;
+    rc = sqlite3_exec(m_db, "PRAGMA encoding = 'UTF-8'", nullptr, nullptr, &errMsg);
+    if (rc != SQLITE_OK) {
+        std::string error(errMsg);
+        sqlite3_free(errMsg);
+        throw std::runtime_error("Failed to set UTF-8 encoding: " + error);
+    }
 }
 
 void Database::closeDatabase() {
@@ -46,15 +56,15 @@ void Database::closeDatabase() {
 void Database::createTables() {
     const char* createTableSQL = R"(
         CREATE TABLE IF NOT EXISTS projects (
-            name TEXT PRIMARY KEY,
-            description TEXT,
+            name TEXT PRIMARY KEY COLLATE NOCASE,
+            description TEXT COLLATE NOCASE,
             status INTEGER
         );
         
         CREATE TABLE IF NOT EXISTS tasks (
-            project_name TEXT,
-            task_name TEXT,
-            description TEXT,
+            project_name TEXT COLLATE NOCASE,
+            task_name TEXT COLLATE NOCASE,
+            description TEXT COLLATE NOCASE,
             status INTEGER,
             deadline INTEGER,
             progress REAL,
@@ -119,8 +129,9 @@ void Database::insertProject(const Project& project) {
     int rc = sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr);
     handleSQLiteError(rc, "Failed to prepare project insert statement");
 
-    sqlite3_bind_text(stmt, 1, project.getName().c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, project.getDescription().c_str(), -1, SQLITE_STATIC);
+    // Use SQLITE_TRANSIENT to make SQLite copy the strings
+    sqlite3_bind_text(stmt, 1, project.getName().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, project.getDescription().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 3, static_cast<int>(project.getStatus()));
 
     rc = sqlite3_step(stmt);
@@ -137,9 +148,9 @@ void Database::insertProject(const Project& project) {
         rc = sqlite3_prepare_v2(m_db, taskSql, -1, &stmt, nullptr);
         handleSQLiteError(rc, "Failed to prepare task insert statement");
         
-        sqlite3_bind_text(stmt, 1, project.getName().c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 2, task.name.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 3, task.description.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 1, project.getName().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 2, task.name.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 3, task.description.c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_bind_int(stmt, 4, static_cast<int>(task.status));
         sqlite3_bind_int64(stmt, 5, std::chrono::system_clock::to_time_t(task.deadline));
         sqlite3_bind_double(stmt, 6, task.progress);
@@ -163,9 +174,9 @@ void Database::updateProject(const Project& project) {
     int rc = sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr);
     handleSQLiteError(rc, "Failed to prepare project update statement");
 
-    sqlite3_bind_text(stmt, 1, project.getDescription().c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, project.getDescription().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 2, static_cast<int>(project.getStatus()));
-    sqlite3_bind_text(stmt, 3, project.getName().c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, project.getName().c_str(), -1, SQLITE_TRANSIENT);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -177,7 +188,7 @@ void Database::updateProject(const Project& project) {
     rc = sqlite3_prepare_v2(m_db, deleteTasksSql, -1, &stmt, nullptr);
     handleSQLiteError(rc, "Failed to prepare delete tasks statement");
 
-    sqlite3_bind_text(stmt, 1, project.getName().c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, project.getName().c_str(), -1, SQLITE_TRANSIENT);
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
@@ -189,9 +200,9 @@ void Database::updateProject(const Project& project) {
         rc = sqlite3_prepare_v2(m_db, taskSql, -1, &stmt, nullptr);
         handleSQLiteError(rc, "Failed to prepare task insert statement");
         
-        sqlite3_bind_text(stmt, 1, project.getName().c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 2, task.name.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 3, task.description.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 1, project.getName().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 2, task.name.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 3, task.description.c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_bind_int(stmt, 4, static_cast<int>(task.status));
         sqlite3_bind_int64(stmt, 5, std::chrono::system_clock::to_time_t(task.deadline));
         sqlite3_bind_double(stmt, 6, task.progress);
@@ -204,29 +215,62 @@ void Database::updateProject(const Project& project) {
 }
 
 void Database::deleteProject(const std::string& projectName) {
-    sqlite3_stmt* stmt;
-    const char* deleteProjSql = "DELETE FROM projects WHERE name = ?";
-    const char* deleteTasksSql = "DELETE FROM tasks WHERE project_name = ?";
+    // First check if project exists
+    if (!projectExists(projectName)) {
+        spdlog::error(u8"Cannot delete project '{}': Project does not exist", projectName);
+        throw std::runtime_error("Project does not exist");
+    }
+
+    spdlog::debug(u8"Starting database transaction for project deletion: {}", projectName);
+    beginTransaction();
     
-    // Delete project
-    int rc = sqlite3_prepare_v2(m_db, deleteProjSql, -1, &stmt, nullptr);
-    handleSQLiteError(rc, "Failed to prepare delete project statement");
+    try {
+        sqlite3_stmt* stmt;
+        const char* deleteProjSql = "DELETE FROM projects WHERE name = ?";
+        const char* deleteTasksSql = "DELETE FROM tasks WHERE project_name = ?";
+        
+        // Delete project
+        spdlog::debug(u8"Preparing to delete project from projects table: {}", projectName);
+        int rc = sqlite3_prepare_v2(m_db, deleteProjSql, -1, &stmt, nullptr);
+        handleSQLiteError(rc, "Failed to prepare delete project statement");
 
-    sqlite3_bind_text(stmt, 1, projectName.c_str(), -1, SQLITE_STATIC);
-    rc = sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
+        rc = sqlite3_bind_text(stmt, 1, projectName.c_str(), -1, SQLITE_TRANSIENT);
+        handleSQLiteError(rc, "Failed to bind project name");
 
-    handleSQLiteError(rc, "Failed to delete project");
+        rc = sqlite3_step(stmt);
+        if (rc != SQLITE_DONE) {
+            sqlite3_finalize(stmt);
+            spdlog::error(u8"Failed to delete project from database: {}", projectName);
+            throw std::runtime_error("Failed to delete project from database");
+        }
+        sqlite3_finalize(stmt);
+        spdlog::debug(u8"Successfully deleted project from projects table: {}", projectName);
 
-    // Delete associated tasks
-    rc = sqlite3_prepare_v2(m_db, deleteTasksSql, -1, &stmt, nullptr);
-    handleSQLiteError(rc, "Failed to prepare delete tasks statement");
+        // Delete associated tasks
+        spdlog::debug(u8"Preparing to delete associated tasks for project: {}", projectName);
+        rc = sqlite3_prepare_v2(m_db, deleteTasksSql, -1, &stmt, nullptr);
+        handleSQLiteError(rc, "Failed to prepare delete tasks statement");
 
-    sqlite3_bind_text(stmt, 1, projectName.c_str(), -1, SQLITE_STATIC);
-    rc = sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
+        rc = sqlite3_bind_text(stmt, 1, projectName.c_str(), -1, SQLITE_TRANSIENT);
+        handleSQLiteError(rc, "Failed to bind project name for tasks deletion");
 
-    handleSQLiteError(rc, "Failed to delete tasks");
+        rc = sqlite3_step(stmt);
+        if (rc != SQLITE_DONE) {
+            sqlite3_finalize(stmt);
+            spdlog::error(u8"Failed to delete project tasks from database: {}", projectName);
+            throw std::runtime_error("Failed to delete project tasks from database");
+        }
+        sqlite3_finalize(stmt);
+        spdlog::debug(u8"Successfully deleted associated tasks for project: {}", projectName);
+
+        spdlog::debug(u8"Committing database transaction for project deletion: {}", projectName);
+        commitTransaction();
+        spdlog::info(u8"Successfully completed project deletion in database: {}", projectName);
+    } catch (const std::exception& e) {
+        spdlog::error(u8"Error during project deletion, rolling back transaction: {}", e.what());
+        rollbackTransaction();
+        throw std::runtime_error(std::string("Failed to delete project: ") + e.what());
+    }
 }
 
 bool Database::projectExists(const std::string& projectName) const {
@@ -258,8 +302,14 @@ std::vector<Project> Database::loadAllProjects() const {
     }
 
     while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
-        std::string name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-        std::string description = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        // Get the length of the text to ensure proper UTF-8 handling
+        const unsigned char* nameText = sqlite3_column_text(stmt, 0);
+        int nameLen = sqlite3_column_bytes(stmt, 0);
+        const unsigned char* descText = sqlite3_column_text(stmt, 1);
+        int descLen = sqlite3_column_bytes(stmt, 1);
+
+        std::string name(reinterpret_cast<const char*>(nameText), nameLen);
+        std::string description(reinterpret_cast<const char*>(descText), descLen);
         auto status = static_cast<ProjectStatus>(sqlite3_column_int(stmt, 2));
 
         Project project(name, description);

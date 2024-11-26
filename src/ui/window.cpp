@@ -2,12 +2,12 @@
 #include <GLFW/glfw3.h>
 #include "../../include/ui/window.h"
 #include <imgui.h>
+#include <spdlog/spdlog.h>
 #include "../../external/imgui/backends/imgui_impl_glfw.h"
 #include "../../external/imgui/backends/imgui_impl_opengl3.h"
 #include <stdexcept>
 #include <chrono>
 #include "../../include/core/project_manager.h"
-#include "spdlog/spdlog.h"
 
 namespace DevTrack {
 
@@ -50,6 +50,12 @@ DevTrackWindow::DevTrackWindow() {
 
     // Setup ImGui style
     ImGui::StyleColorsDark();
+
+    // Initialize member variables
+    openCreateProjectModal = false;
+    projectToDelete = "";
+    confirmDelete = false;
+    m_needsRefresh = true;  // Initial refresh needed
 }
 
 DevTrackWindow::~DevTrackWindow() {
@@ -71,8 +77,6 @@ void DevTrackWindow::startImGuiFrame() {
 }
 
 void DevTrackWindow::renderMainUI(ProjectManager& projectManager) {
-    static bool openCreateProjectModal = false;
-    
     // Main ImGui window
     ImGui::Begin("DevTrack: Project Management", nullptr, 
         ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse);
@@ -111,31 +115,49 @@ void DevTrackWindow::renderMainUI(ProjectManager& projectManager) {
     ImGui::End();
 }
 
+void DevTrackWindow::refreshProjectCache(ProjectManager& projectManager) {
+    if (m_needsRefresh) {
+        m_cachedProjects = projectManager.getAllProjects();
+        m_needsRefresh = false;
+        spdlog::debug("Project cache refreshed. {} projects loaded.", m_cachedProjects.size());
+    }
+}
+
 void DevTrackWindow::renderProjectList(ProjectManager& projectManager) {
-    // Fetch all projects
-    auto projects = projectManager.getAllProjects();
+    // Refresh cache if needed
+    refreshProjectCache(projectManager);
 
     // Improved project list with table
     if (ImGui::BeginTable("Projects", 4, 
         ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
         
         // Table headers
-        ImGui::TableSetupColumn("Project Name");
-        ImGui::TableSetupColumn("Description");
-        ImGui::TableSetupColumn("Status");
-        ImGui::TableSetupColumn("Actions");
+        ImGui::TableSetupColumn(u8"Project Name", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn(u8"Description", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn(u8"Status", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn(u8"Actions", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableHeadersRow();
 
-        for (auto& project : projects) {
+        for (auto& project : m_cachedProjects) {
             ImGui::TableNextRow();
             
             // Project Name
             ImGui::TableSetColumnIndex(0);
-            ImGui::Text("%s", project.getName().c_str());
+            float wrapWidth = ImGui::GetColumnWidth();
+            if (wrapWidth < 0) wrapWidth = 100.0f;
+            ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + wrapWidth);
+            std::string projectName = project.getName();
+            ImGui::Text(u8"%s", projectName.c_str());
+            ImGui::PopTextWrapPos();
 
             // Description
             ImGui::TableSetColumnIndex(1);
-            ImGui::Text("%s", project.getDescription().c_str());
+            wrapWidth = ImGui::GetColumnWidth();
+            if (wrapWidth < 0) wrapWidth = 200.0f;
+            ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + wrapWidth);
+            std::string projectDesc = project.getDescription();
+            ImGui::Text(u8"%s", projectDesc.c_str());
+            ImGui::PopTextWrapPos();
 
             // Status
             ImGui::TableSetColumnIndex(2);
@@ -164,29 +186,70 @@ void DevTrackWindow::renderProjectList(ProjectManager& projectManager) {
             // Actions
             ImGui::TableSetColumnIndex(3);
             ImGui::PushID(project.getName().c_str());
+            
             if (ImGui::Button("View")) {
                 renderProjectDetails(project);
             }
+            
             ImGui::SameLine();
+            
             if (ImGui::Button("Delete")) {
-                projectManager.deleteProject(project.getName());
+                projectToDelete = project.getName();
+                spdlog::debug(u8"Setting project to delete: {}", projectToDelete);
+                ImGui::OpenPopup(u8"Delete Project?");
             }
+            
             ImGui::PopID();
         }
 
         ImGui::EndTable();
     }
+
+    // Confirmation popup
+    if (ImGui::BeginPopupModal(u8"Delete Project?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (!projectToDelete.empty()) {
+            ImGui::Text(u8"Are you sure you want to delete project: %s?", projectToDelete.c_str());
+            ImGui::Text(u8"This action cannot be undone.");
+            
+            if (ImGui::Button(u8"Yes, Delete")) {
+                spdlog::debug(u8"Attempting to delete project: {}", projectToDelete);
+                if (projectManager.deleteProject(projectToDelete)) {
+                    spdlog::info(u8"Project deleted successfully: {}", projectToDelete);
+                    m_needsRefresh = true;  // Mark cache for refresh after deletion
+                    refreshProjectCache(projectManager);  // Immediately refresh the cache
+                } else {
+                    spdlog::error(u8"Failed to delete project: {}", projectToDelete);
+                }
+                projectToDelete.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            
+            ImGui::SameLine();
+            if (ImGui::Button(u8"No, Cancel")) {
+                projectToDelete.clear();
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        
+        ImGui::EndPopup();
+    }
 }
 
 void DevTrackWindow::renderProjectDetails(Project& project) {
-    // Modal popup for project details
-    ImGui::OpenPopup(("Project Details: " + project.getName()).c_str());
+    std::string modalTitle = u8"Project Details: " + project.getName();
+    ImGui::OpenPopup(modalTitle.c_str());
     
-    if (ImGui::BeginPopupModal(("Project Details: " + project.getName()).c_str(), nullptr, 
+    if (ImGui::BeginPopupModal(modalTitle.c_str(), nullptr, 
         ImGuiWindowFlags_AlwaysAutoResize)) {
         
-        ImGui::Text("Project: %s", project.getName().c_str());
-        ImGui::Text("Description: %s", project.getDescription().c_str());
+        float windowWidth = ImGui::GetWindowWidth();
+        float textWidth = windowWidth - 40.0f; // Leave some padding
+        
+        // Project name and description with proper text wrapping
+        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + textWidth);
+        ImGui::Text(u8"Project: %s", project.getName().c_str());
+        ImGui::Text(u8"Description: %s", project.getDescription().c_str());
+        ImGui::PopTextWrapPos();
         
         ImGui::Separator();
         ImGui::Text("Tasks:");
@@ -208,31 +271,43 @@ void DevTrackWindow::renderProjectDetails(Project& project) {
 
 void DevTrackWindow::renderCreateProjectModal(ProjectManager& projectManager) {
     // Modal for creating a new project
-    if (ImGui::BeginPopupModal("Create New Project", nullptr, 
+    if (ImGui::BeginPopupModal(u8"Create New Project", nullptr, 
         ImGuiWindowFlags_AlwaysAutoResize)) {
         
-        static char projectName[128] = "";
-        static char projectDescription[512] = "";
+        static char projectName[256] = "";  // Increased buffer size
+        static char projectDescription[1024] = "";  // Increased buffer size
 
-        ImGui::InputText("Project Name", projectName, IM_ARRAYSIZE(projectName));
-        ImGui::InputTextMultiline("Project Description", projectDescription, IM_ARRAYSIZE(projectDescription));
+        // Add input validation hint
+        ImGui::TextDisabled("(?)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("Project name must not be empty and can contain up to 255 characters");
+            ImGui::EndTooltip();
+        }
+        
+        ImGui::InputText(u8"Project Name", projectName, IM_ARRAYSIZE(projectName));
+        ImGui::InputTextMultiline(u8"Project Description", projectDescription, IM_ARRAYSIZE(projectDescription));
 
         ImGui::Separator();
         if (ImGui::Button("Create")) {
             if (strlen(projectName) == 0) {
                 spdlog::warn("Project name cannot be empty");
             } else {
-                try {
-                    projectManager.createProject(projectName, projectDescription);
-                    spdlog::info("Project created: {}", projectName);
-                } catch (const std::exception& e) {
-                    spdlog::error("Failed to create project: {}", e.what());
+                if (projectManager.createProject(projectName, projectDescription)) {
+                    spdlog::info(u8"Project created successfully: {}", projectName);
+                    m_needsRefresh = true;  // Mark cache for refresh after creation
+                    // Clear the input fields
+                    projectName[0] = '\0';
+                    projectDescription[0] = '\0';
+                    ImGui::CloseCurrentPopup();
                 }
-                ImGui::CloseCurrentPopup();
             }
         }
         ImGui::SameLine();
         if (ImGui::Button("Cancel")) {
+            // Clear the input fields
+            projectName[0] = '\0';
+            projectDescription[0] = '\0';
             ImGui::CloseCurrentPopup();
         }
 
