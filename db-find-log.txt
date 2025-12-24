@@ -1,0 +1,4 @@
+Searching for devtrack.db in /home/zajferx/.config
+Found: /home/zajferx/.config/devtrack/devtrack.db
+  Size: 856064 bytes
+  Modified: Wed Nov 19 2025 02:58:12 GMT+0100 (Central European Standard Time)

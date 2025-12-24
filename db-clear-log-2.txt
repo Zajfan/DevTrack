@@ -1,0 +1,11 @@
+Checking database files...
+Not found: /home/zajferx/.config/DevTrack/devtrack.db
+Found: /home/zajferx/.config/devtrack/devtrack.db
+  Size: 856064 bytes
+  Backed up to: /home/zajferx/.config/devtrack/devtrack.db.bak
+  Deleted: /home/zajferx/.config/devtrack/devtrack.db
+Not found: /home/zajferx/.config/DevTrack/devtrack.db.bak
+Found: /home/zajferx/.config/devtrack/devtrack.db.bak
+  Size: 856064 bytes
+  Backed up to: /home/zajferx/.config/devtrack/devtrack.db.bak.bak
+  Deleted: /home/zajferx/.config/devtrack/devtrack.db.bak

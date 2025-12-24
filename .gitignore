@@ -1,0 +1,76 @@
+# Build directories
+build/
+out/
+bin/
+obj/
+dist/
+release/
+
+# IDE files
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+
+# C++ compiled files
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Node modules and npm
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Electron
+*.log
+dist_electron/
+
+# Database files
+*.db
+*.db3
+*.sqlite
+*.sqlite3
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# User specific
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Logs
+logs/
+*.log
+
+# Test coverage
+coverage/
+*.gcov
+*.gcda
+*.gcno
+
+# Documentation builds
+docs/_build/

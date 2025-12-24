@@ -1,0 +1,85 @@
+{
+  "name": "devtrack",
+  "version": "0.1.0",
+  "description": "A concept-driven project management system for AI-assisted solo development",
+  "main": "dist/main/main.js",
+  "author": "The No Hands Company",
+  "license": "MIT",
+  "homepage": "https://github.com/The-No-Hands-Company/DevTrack",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/The-No-Hands-Company/DevTrack.git"
+  },
+  "bugs": {
+    "url": "https://github.com/The-No-Hands-Company/DevTrack/issues"
+  },
+  "keywords": [
+    "project-management",
+    "electron",
+    "typescript",
+    "react",
+    "sqlite",
+    "5w1h",
+    "concept-driven"
+  ],
+  "scripts": {
+    "dev": "npm run build && NODE_ENV=development electron . --inspect=5858",
+    "build": "npm run build:main && npm run build:renderer && npm run copy:assets",
+    "build:main": "tsc",
+    "build:renderer": "node scripts/build-renderer.js",
+    "copy:assets": "cp src/renderer/index.html dist/renderer/ && cp -r src/renderer/styles dist/renderer/ 2>/dev/null || true",
+    "start": "npm run build && electron .",
+    "package": "npm run build && electron-builder",
+    "postinstall": "electron-builder install-app-deps",
+    "clean": "rm -rf dist node_modules",
+    "typecheck": "tsc --noEmit",
+    "scan-projects": "npm run build:main && node dist/main/scripts/scan-projects.js"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.13.5",
+    "@emotion/styled": "^11.13.5",
+    "@mui/icons-material": "^6.1.7",
+    "@mui/material": "^6.1.7",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/react-beautiful-dnd": "^13.1.8",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^11.7.0",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "electron-store": "^8.2.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "fabric": "^6.9.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "react": "^18.3.1",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-color": "^2.19.3",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/fabric": "^5.3.10",
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-color": "^3.0.13",
+    "@types/react-dom": "^18.3.1",
+    "electron": "^35.7.5",
+    "electron-builder": "^26.0.12",
+    "esbuild": "^0.27.0",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
