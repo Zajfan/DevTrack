@@ -1,0 +1,25 @@
+{
+  "name": "devtrack",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "crates/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"cargo run --bin devtrack-api\" \"npm run dev --prefix crates/devtrack-web\"",
+    "dev:desktop": "cd crates/devtrack-desktop && cargo tauri dev",
+    "build": "cargo build --workspace --release && npm run build --prefix crates/devtrack-web",
+    "build:api": "cargo build --release --bin devtrack-api",
+    "build:web": "npm run build --prefix crates/devtrack-web",
+    "build:tui": "cargo build --release --bin devtrack",
+    "build:desktop": "cd crates/devtrack-desktop && cargo tauri build",
+    "test": "cargo test --workspace && npm run test --prefix crates/devtrack-web",
+    "lint": "cargo clippy --workspace && npm run lint --prefix crates/devtrack-web",
+    "dev:api": "cargo run --bin devtrack-api",
+    "dev:web": "npm run dev --prefix crates/devtrack-web",
+    "dev:tui": "cargo run --bin devtrack"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

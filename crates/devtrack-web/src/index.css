@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/* Per-OS system font stack — native feel on every platform */
+:root {
+  --font-macos: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue";
+  --font-windows: "Segoe UI Variable Text", "Segoe UI", system-ui;
+  --font-linux: "Adwaita Sans", "Cantarell", "Ubuntu", system-ui;
+  font-family: var(--font-windows);
+  line-height: 1.45;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@supports (-apple-system, BlinkMacSystemFont) {
+  :root { font-family: var(--font-macos); }
+}
+
+/* Linux detection via GTK-exclusive property is unreliable in CSS;
+   JS sets data-platform on <html> at startup (see usePlatform.ts). */
+:root[data-platform="linux"] { font-family: var(--font-linux); }
+:root[data-platform="macos"] { font-family: var(--font-macos); }
+:root[data-platform="windows"] { font-family: var(--font-windows); }
+
+/* Native-density base: smaller radii, flat surfaces */
+:root {
+  --radius-native: 6px;
+  --radius-card: 3px;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Native focus rings instead of browser defaults */
+:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: -1px;
+}
+
+/* Kill oversized scrollbars — slim, native-like */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.4);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: rgba(128, 128, 128, 0.65); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Flat native panes: utility classes used by pages */
+.native-pane {
+  background: var(--color-white);
+  border: 1px solid #e2e2e6;
+  border-radius: var(--radius-card);
+}
+.dark .native-pane {
+  background: #1e1f24;
+  border-color: #36373d;
+}
+
+.native-flat {
+  background: transparent;
+  border-bottom: 1px solid #e2e2e6;
+  border-radius: 0;
+}
+.dark .native-flat {
+  border-color: #36373d;
+}
+
+/* Reduce card roundness globally for a denser, native feel */
+.rounded-xl { border-radius: var(--radius-card) !important; }
+.rounded-2xl { border-radius: var(--radius-native) !important; }
+.rounded-lg { border-radius: var(--radius-native) !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,20 @@
+[package]
+name = "devtrack-tui"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "devtrack"
+path = "src/main.rs"
+
+[dependencies]
+devtrack-core = { path = "../devtrack-core" }
+chrono = { workspace = true }
+clap = { workspace = true }
+crossterm = { workspace = true }
+ratatui = { workspace = true }
+rusqlite = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+walkdir = { workspace = true }

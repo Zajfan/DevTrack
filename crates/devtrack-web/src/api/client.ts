@@ -1,0 +1,107 @@
+import { invoke } from '@tauri-apps/api/core';
+import type {
+  Project,
+  GitInfo,
+  Task,
+  SubTask,
+  TimeEntry,
+  TimeLogSummary,
+  TimeLogEntry,
+  DashboardSummary,
+  CreateProjectRequest,
+  UpdateProjectRequest,
+  CreateTaskRequest,
+  UpdateTaskRequest,
+  CreateSubTaskRequest,
+  UpdateSubTaskRequest,
+  NotesRequest,
+  StartTimerResponse,
+  StopTimerResponse,
+  ActiveTimerResponse,
+  TimerUpdateEvent,
+} from '../types';
+
+const i = <T,>(command: string, args?: Record<string, unknown>): Promise<T> => invoke<T>(command, args);
+
+export const api = {
+  projects: {
+    list: (archived?: boolean) => i<Project[]>('projects_list', { archived: archived ?? false }),
+    get: (id: number) => i<Project>('project_get', { id }),
+    create: (data: CreateProjectRequest) => i<Project>('project_create', { name: data.name, path: data.path }),
+    update: (id: number, data: UpdateProjectRequest) => i<Project>('project_update', { id, status: data.status, tags: data.tags }),
+    delete: (id: number) => i<void>('project_delete', { id }),
+    scan: (path: string) => i<number>('project_scan', { path }),
+    git: (id: number) => i<GitInfo>('project_git', { id }),
+    openPath: (id: number) => i<void>('project_open_path', { id }),
+    openTerminal: (id: number) => i<void>('project_open_terminal', { id }),
+  },
+  tasks: {
+    list: (projectId: number) => i<Task[]>('tasks_list', { projectId }),
+    get: (id: number) => i<Task>('task_get', { id }),
+    create: (projectId: number, data: CreateTaskRequest) => i<Task>('task_create', {
+      projectId,
+      title: data.title,
+      description: data.description,
+      priority: data.priority,
+      dueDate: data.due_date,
+    }),
+    update: (id: number, data: UpdateTaskRequest) => i<void>('task_update', {
+      id,
+      title: data.title,
+      description: data.description,
+      status: data.status,
+      priority: data.priority,
+      dueDate: data.due_date,
+    }),
+    delete: (id: number) => i<void>('task_delete', { id }),
+    toggle: (id: number, status: string) => i<void>('task_toggle', { id, status }),
+  },
+  subtasks: {
+    list: (taskId: number) => i<SubTask[]>('subtasks_list', { taskId }),
+    create: (taskId: number, data: CreateSubTaskRequest) => i<SubTask>('subtask_create', { taskId, title: data.title }),
+    update: (id: number, data: UpdateSubTaskRequest) => i<void>('subtask_update', { id, title: data.title, done: data.done }),
+    delete: (id: number) => i<void>('subtask_delete', { id }),
+  },
+  timer: {
+    start: (taskId: number) => i<StartTimerResponse>('timer_start', { taskId }),
+    stop: (taskId: number) => i<StopTimerResponse>('timer_stop', { taskId }),
+    active: () => i<ActiveTimerResponse | null>('timer_active'),
+  },
+  timeEntries: {
+    list: (period?: string) => i<TimeEntry[]>('time_entries_list', { period }),
+    report: (period: string) => i<TimeLogSummary>('time_report', { period }),
+  },
+  notes: {
+    get: (projectId: number) => i<string>('notes_get', { projectId }),
+    update: (projectId: number, content: string) => i<void>('notes_update', { projectId, content }),
+  },
+  system: {
+    dashboardSummary: () => i<DashboardSummary>('dashboard_summary'),
+    backup: () => i<string>('app_backup'),
+    exportData: () => i<string>('app_export_data'),
+    importData: (path: string) => i<void>('app_import_data', { path }),
+    getDataDir: () => i<string>('app_get_data_dir'),
+  },
+};
+
+export type {
+  Project,
+  GitInfo,
+  Task,
+  SubTask,
+  TimeEntry,
+  TimeLogSummary,
+  TimeLogEntry,
+  DashboardSummary,
+  CreateProjectRequest,
+  UpdateProjectRequest,
+  CreateTaskRequest,
+  UpdateTaskRequest,
+  CreateSubTaskRequest,
+  UpdateSubTaskRequest,
+  NotesRequest,
+  StartTimerResponse,
+  StopTimerResponse,
+  ActiveTimerResponse,
+  TimerUpdateEvent,
+};
