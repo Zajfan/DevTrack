@@ -82,6 +82,12 @@ export const useTasks = (projectId: number | null) =>
     enabled: projectId !== null,
   });
 
+export const useGlobalTasks = () =>
+  useQuery<Task[]>({
+    queryKey: ['tasks', 'global'],
+    queryFn: () => api.tasks.global(),
+  });
+
 export const useTask = (id: number | null) =>
   useQuery<Task>({
     queryKey: ['task', id],
@@ -94,8 +100,9 @@ export const useCreateTask = () => {
   return useMutation({
     mutationFn: ({ projectId, data }: { projectId: number; data: CreateTaskRequest }) =>
       api.tasks.create(projectId, data),
-    onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
+    onSuccess: () => {
+      // prefix-match: invalidates ['tasks', projectId] AND ['tasks', 'global']
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 };

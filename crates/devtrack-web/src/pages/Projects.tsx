@@ -1,4 +1,5 @@
 import { useProjects, useCreateProject, useDeleteProject, useUpdateProject } from '@hooks/useApi';
+import { api } from '@api/client';
 import { useState } from 'react';
 import { cn } from '@utils/helpers';
 import { selectProjectDirectory } from '../components/NativeDialogs';
@@ -16,6 +17,9 @@ import {
   Settings,
   Archive,
   ArchiveRestore,
+  GitCommitHorizontal,
+  FolderOpen,
+  TerminalSquare,
 } from 'lucide-react';
 import { useAppStore } from '@store/appStore';
 import type { Project } from '../types';
@@ -33,6 +37,7 @@ export function Projects() {
   const [newProjectPath, setNewProjectPath] = useState('.');
   const [directoryError, setDirectoryError] = useState<string | null>(null);
   const [editingProject, setEditingProject] = useState<{ id: number; name: string; tags: string } | null>(null);
+  const [commitProject, setCommitProject] = useState<{ id: number; name: string; message: string; status: string | null } | null>(null);
   const [filter, setFilter] = useState<'all' | 'active' | 'archived'>('all');
 
   const handleAddProject = async () => {
@@ -153,6 +158,9 @@ export function Projects() {
               onEdit={() => setEditingProject({ id: project.id, name: project.name, tags: project.tags })}
               onDelete={() => handleDelete(project.id)}
               onArchive={() => handleArchive(project.id, project.status !== 'Archived')}
+              onCommit={() => setCommitProject({ id: project.id, name: project.name, message: '', status: null })}
+              onOpenPath={async () => { try { await api.projects.openPath(project.id); } catch (e) { console.error(e); } }}
+              onOpenTerminal={async () => { try { await api.projects.openTerminal(project.id); } catch (e) { console.error(e); } }}
               isArchived={project.status === 'Archived'}
             />
           ))
@@ -257,6 +265,62 @@ export function Projects() {
           </div>
         </div>
       )}
+      {/* Quick Commit Modal */}
+      {commitProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md mx-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Quick Commit</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Stage all changes in <span className="font-mono">{commitProject.name}</span>, commit and push
+            </p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!commitProject.message.trim()) return;
+              setCommitProject({ ...commitProject, status: 'committing…' });
+              try {
+                const result = await api.projects.gitCommit(commitProject.id, commitProject.message.trim());
+                setCommitProject({ ...commitProject, status: result });
+                setTimeout(() => setCommitProject(null), 1500);
+              } catch (error) {
+                setCommitProject({ ...commitProject, status: `Failed: ${String(error)}` });
+              }
+            }} className="space-y-4">
+              <div>
+                <label htmlFor="commit-message" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Commit message
+                </label>
+                <input
+                  id="commit-message"
+                  type="text"
+                  value={commitProject.message}
+                  onChange={(e) => setCommitProject({ ...commitProject, message: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                  placeholder="feat: what changed"
+                  autoFocus
+                />
+              </div>
+              {commitProject.status && (
+                <p className={cn('text-sm', commitProject.status.startsWith('Failed') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400')}>
+                  {commitProject.status}
+                </p>
+              )}
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCommitProject(null)}
+                  className="px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2">
+                  <GitCommitHorizontal className="w-4 h-4" />
+                  Commit & Push
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -268,6 +332,9 @@ function ProjectCard({
   onEdit,
   onDelete,
   onArchive,
+  onCommit,
+  onOpenPath,
+  onOpenTerminal,
   isArchived,
 }: {
   project: Project;
@@ -276,6 +343,9 @@ function ProjectCard({
   onEdit: () => void;
   onDelete: () => void;
   onArchive: () => void;
+  onCommit: () => void;
+  onOpenPath: () => void;
+  onOpenTerminal: () => void;
   isArchived: boolean;
 }) {
   const git = project.git;
@@ -328,15 +398,28 @@ function ProjectCard({
 
       {/* Git Info */}
       {git && (
-        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-          <div className="flex items-center gap-2 text-sm">
-            <GitBranch className="w-4 h-4 text-gray-500" />
-            <span className="font-mono text-gray-700 dark:text-gray-300">{git.branch}</span>
-            {git.ahead > 0 && <span className="text-green-600">↑{git.ahead}</span>}
-            {git.behind > 0 && <span className="text-red-600">↓{git.behind}</span>}
-            {git.stashes > 0 && <span className="text-yellow-600">${git.stashes}</span>}
-            {git.is_dirty && <span className="text-red-500">●</span>}
+        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm min-w-0">
+            <GitBranch className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            <span className="font-mono text-gray-700 dark:text-gray-300 truncate">{git.branch}</span>
+            {git.ahead > 0 && <span className="text-green-600 flex-shrink-0">↑{git.ahead}</span>}
+            {git.behind > 0 && <span className="text-red-600 flex-shrink-0">↓{git.behind}</span>}
+            {git.stashes > 0 && <span className="text-yellow-600 flex-shrink-0">${git.stashes}</span>}
+            {git.is_dirty && <span className="text-red-500 flex-shrink-0">●</span>}
           </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onCommit(); }}
+            className={cn(
+              'p-1.5 rounded-lg flex-shrink-0 transition-colors',
+              git.is_dirty
+                ? 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30'
+                : 'text-gray-300 dark:text-gray-600'
+            )}
+            aria-label="Quick commit"
+            title={git.is_dirty ? 'Stage all, commit and push' : 'Nothing to commit'}
+          >
+            <GitCommitHorizontal className="w-4 h-4" />
+          </button>
         </div>
       )}
 

@@ -60,6 +60,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/projects/:id/tasks", get(list_tasks).post(create_task))
         .route("/tasks/:id", get(get_task).patch(update_task).delete(delete_task))
         .route("/tasks/:id/subtasks", get(list_subtasks).post(create_subtask))
+        .route("/tasks-global", get(list_global_tasks))
         .route("/subtasks/:id", patch(update_subtask).delete(delete_subtask))
         
         // Notes
@@ -328,6 +329,21 @@ async fn update_task(State(state): State<Arc<AppState>>, Path(id): Path<i64>, Js
     }
 }
 
+async fn list_global_tasks(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let db_path = state.db_path.clone();
+
+    let result = spawn_blocking(move || {
+        let conn = open_conn(&db_path)?;
+        devtrack_core::queries::get_global_tasks(&conn, true)
+    }).await;
+
+    match result {
+        Ok(Ok(tasks)) => Json(tasks).into_response(),
+        Ok(Err(e)) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+    }
+}
+
 async fn delete_task(State(state): State<Arc<AppState>>, Path(id): Path<i64>) -> impl IntoResponse {
     let db_path = state.db_path.clone();
     let id = id;
@@ -336,7 +352,6 @@ async fn delete_task(State(state): State<Arc<AppState>>, Path(id): Path<i64>) ->
         let conn = open_conn(&db_path)?;
         devtrack_core::queries::delete_task(&conn, id)
     }).await;
-    
     match result {
         Ok(Ok(_)) => StatusCode::NO_CONTENT.into_response(),
         Ok(Err(e)) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),

@@ -114,6 +114,8 @@ fn main() {
             commands::task_update,
             commands::task_delete,
             commands::task_toggle,
+            commands::tasks_global,
+            commands::git_commit,
             commands::subtasks_list,
             commands::subtask_create,
             commands::subtask_update,

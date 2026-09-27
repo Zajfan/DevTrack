@@ -1,159 +1,208 @@
 # DevTrack
 
-[![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
-[![Electron](https://img.shields.io/badge/Electron-28%2B-brightgreen.svg)](https://www.electronjs.org/)
-[![React](https://img.shields.io/badge/React-18-blue.svg)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue.svg)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/Rust-stable-orange.svg)](https://www.rust-lang.org/)
+[![Tauri](https://img.shields.io/badge/Tauri-v2-24C8D8.svg)](https://tauri.app/)
+[![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6.svg)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-> A high-performance, concept-driven project management system for AI-assisted solo development projects.
+> A local-first project management system for solo developers. Projects, tasks, subtasks, notes, and time tracking — with Git awareness built in.
 
-## Overview
+## Why DevTrack
 
-DevTrack is a modern desktop application combining a C++23 backend with an Electron frontend, designed specifically for managing AI-assisted development projects using the 5W1H conceptual framework.
+Most PM tools are built for teams, servers, and browsers. DevTrack is built for **one developer working across many projects**:
+
+- **Local-first** — your data lives in a single SQLite file on your machine. No server, no account, no telemetry.
+- **Git-aware** — DevTrack knows each project's branch, ahead/behind count, stashes, and dirty state.
+- **One binary** — the Tauri desktop app embeds the Rust core; no runtime dependencies.
+- **Time tracking that stays out of the way** — start/stop a timer on any task from the app, the tray, or a global hotkey.
 
 ## Features
 
-- 🏗️ **Modern C++23 Backend** - High-performance server with SQLite database
-- 🖥️ **Electron Desktop UI** - Rich, responsive interface built with React + TypeScript
-- 📊 **Concept-First Approach** - 5W1H framework (What, How, Where, With What, When, Why)
-- 📝 **Project Management** - Track projects, tasks, and concepts
-- 🎨 **Modern UI** - Material-UI components with dark/light themes
-- 🔄 **Real-time Updates** - WebSocket support for live data
-- 📦 **Cross-Platform** - Windows, macOS, and Linux support
+### Projects
+- Register projects by path or **auto-discover** them (`.git`, `Cargo.toml`, `package.json`, `go.mod`)
+- Status lifecycle: Active → Paused → Archived
+- Tags for filtering (`@tag` search)
+- Live Git status: branch, `↑ahead ↓behind`, stash count, dirty indicator
+- Open in file explorer or terminal, native directory picker
+- Per-project Markdown notes, stored locally
 
-## Quick Start
+### Tasks
+- Tasks with priority (High/Medium/Low), due dates, and descriptions
+- **Sub-tasks** with progress counters
+- Global todo view across all projects, sorted by priority
+- Create, edit, toggle, delete — from the UI or the CLI
 
-```bash
-# Clone the repository
-git clone https://github.com/The-No-Hands-Company/DevTrack.git
-cd DevTrack
+### Time Tracking
+- Start/stop timer on any task (app, tray, or `Ctrl+Shift+T` from anywhere)
+- Today / week / all-time reports, aggregated per project
+- Optional notes on each time entry
 
-# Run automated setup (Linux/macOS)
-./scripts/setup.sh
+### Native Desktop (Tauri v2)
+- Real platform menu bar (File/Edit/View/Window/Help)
+- System tray with live timer
+- Global shortcut (`Ctrl+Shift+T`), native file dialogs, native notifications
+- Single-instance, window state persistence
+- Keyboard-first: `Ctrl+1..7` sections, `Ctrl+K` search, `Ctrl+,` settings
 
-# Or build manually
-cd backend && mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build .
+### CLI + REST API
+- Full-featured CLI for terminal workflows
+- REST API for scripts, web, and mobile clients
 
-cd ../../frontend
-npm install
-npm run electron:dev
+## Architecture
+
 ```
-
-## Documentation
-
-- 📖 [Full Documentation](docs/INDEX.md)
-- 🏛️ [Architecture Overview](docs/ARCHITECTURE.md)
-- 🔨 [Build Guide](docs/BUILD_GUIDE.md)
-- 🔄 [Migration Plan](docs/MIGRATION_PLAN.md)
-
-## Technology Stack
-
-### Backend
-- **C++23** - Modern C++ with latest features
-- **SQLite3** - Embedded database
-- **Crow** - Lightweight HTTP server
-- **CMake** - Build system
-
-### Frontend
-- **Electron** - Desktop application framework
-- **React 18** - UI library
-- **TypeScript 5** - Type-safe development
-- **Material-UI** - Component library
-- **Redux Toolkit** - State management
-- **Vite** - Build tool
+┌──────────────────────────────────────────────────────────┐
+│                   devtrack-desktop (Tauri v2)             │
+│   React + TypeScript UI  ◄──Tauri IPC──►  devtrack-core   │
+└──────────────────────────────────────────────────────────┘
+┌──────────────────────────┐   ┌───────────────────────────┐
+│  devtrack-tui (CLI)      │   │  devtrack-api (REST)      │
+│  Ratatui + Clap          │   │  Axum + Tokio             │
+└──────────────────────────┘   └───────────────────────────┘
+              └──────────────┬──────────────┘
+                             ▼
+                   ┌──────────────────┐
+                   │  devtrack-core   │  Rust library: models,
+                   │  (shared)        │  queries, git2, SQLite
+                   └────────┬─────────┘
+                            ▼
+                   ~/.local/share/devtrack/
+                     ├── projects.db      (SQLite, WAL)
+                     └── notes/*.md       (Markdown)
+```
 
 ## Project Structure
 
 ```
 DevTrack/
-├── backend/           # C++23 server
-│   ├── src/          # Source files
-│   ├── include/      # Header files
-│   └── tests/        # Unit tests
-├── frontend/         # Electron app
-│   └── src/          # TypeScript/React code
-├── docs/             # Documentation
-├── scripts/          # Build scripts
-└── tools/            # Development tools
+├── Cargo.toml                 # Workspace root
+├── crates/
+│   ├── devtrack-core/         # Shared library: models, queries, git, storage
+│   ├── devtrack-tui/          # CLI + TUI (binary: devtrack)
+│   ├── devtrack-api/          # REST API server (binary: devtrack-api)
+│   ├── devtrack-web/          # React + TypeScript + Vite frontend
+│   └── devtrack-desktop/      # Tauri v2 desktop app
+├── .github/workflows/         # Build, release, web-deploy CI
+└── docs/                      # Specs and design documents
 ```
 
-## Development Status
+## Quick Start
 
-**Current Phase**: Architecture Complete ✅
+### Desktop app (recommended)
 
-- ✅ Architecture design
-- ✅ Project structure
-- ✅ Database schema
-- ✅ API design
-- 🔜 Backend implementation
-- 🔜 Frontend implementation
-- 🔜 Testing & deployment
+```bash
+git clone git@github.com:Zajfan/DevTrack.git
+cd DevTrack
+npm install            # workspace tooling
+npm run dev:desktop    # builds and launches the Tauri app
+```
 
-See [PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md) for detailed status.
+The first build takes a few minutes; after that, hot reload makes UI changes instant.
+
+### Production build
+
+```bash
+npm run build:desktop  # bundles .deb/.rpm/.AppImage/.dmg/.msi
+```
+
+Artifacts land in `target/release/bundle/`.
+
+### CLI
+
+```bash
+cargo build --release --bin devtrack
+./target/release/devtrack --help
+
+# Common commands
+devtrack add -n "MyProject" ~/code/my-project   # register a project
+devtrack scan ~/code                            # auto-discover projects
+devtrack ls                                     # list with git status
+devtrack task add MyProject "Fix the parser" -p High
+devtrack task ls MyProject
+devtrack log today                              # time report
+devtrack dashboard                              # TUI dashboard
+```
+
+### REST API
+
+```bash
+cargo run --bin devtrack-api                    # serves on :8080
+
+curl http://localhost:8080/projects
+curl http://localhost:8080/dashboard/summary
+curl "http://localhost:8080/reports/time?period=week"
+```
+
+| Resource | Endpoints |
+|----------|-----------|
+| Projects | `GET/POST /projects`, `GET/PATCH/DELETE /projects/:id`, `GET /projects/:id/git` |
+| Tasks | `GET/POST /projects/:id/tasks`, `GET/PATCH/DELETE /tasks/:id` |
+| Subtasks | `GET/POST /tasks/:id/subtasks`, `PATCH/DELETE /subtasks/:id` |
+| Notes | `GET/PUT /projects/:id/notes` |
+| Time | `GET/POST /time-entries`, `GET /time-entries/active`, `POST /time-entries/:id/stop` |
+| Reports | `GET /reports/time?period=today\|week\|all` |
+| Dashboard | `GET /dashboard/summary` |
+
+### Web (mobile fallback)
+
+```bash
+cd crates/devtrack-web && npm run dev    # dev server on :3000
+npm run build                            # PWA build with service worker
+```
+
+## Data & Backups
+
+All data lives in one directory (platform conventions):
+
+| Platform | Path |
+|----------|------|
+| Linux | `~/.local/share/devtrack/` |
+| macOS | `~/Library/Application Support/devtrack/` |
+| Windows | `%APPDATA%\devtrack\` |
+
+```bash
+devtrack backup     # timestamped copy of the database
+```
 
 ## Requirements
 
-### Backend
-- CMake 3.20+
-- C++23 compatible compiler (GCC 12+, Clang 16+, MSVC 2022+)
-- SQLite3 development libraries
+- **Rust** stable (2021 edition workspace)
+- **Node.js 18+** for the frontend
+- **Linux**: WebKitGTK 4.1 (`libwebkit2gtk-4.1-dev`), optional tray support (`libayatana-appindicator3`)
+- **Windows**: WebView2 (preinstalled on Windows 10/11)
+- **macOS**: none beyond Xcode CLT for building
 
-### Frontend
-- Node.js 18+
-- npm or pnpm
+## Distribution
 
-## Building
+No paid developer programs required — everything ships free:
 
-### Backend
+| Platform | Artifact | Channels |
+|----------|----------|----------|
+| Linux | `.deb`, `.rpm`, `.AppImage` | GitHub Releases, AUR (planned) |
+| macOS | `.dmg`, `.app` | GitHub Releases, Homebrew (planned) — unsigned, see [Gatekeeper notes](docs/GATEKEEPER_WORKAROUND.md) |
+| Windows | `.msi`, `.exe` | GitHub Releases, Scoop/Chocolatey (planned) |
+| Mobile | PWA | GitHub Pages |
+
+## Development
+
 ```bash
-cd backend
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=23
-cmake --build . -j$(nproc)
-./bin/devtrack_server
+cargo build --workspace        # build everything
+cargo test --workspace         # Rust tests
+cargo clippy --workspace       # lint
+cd crates/devtrack-web && npm run lint && npm run build
 ```
 
-### Frontend
-```bash
-cd frontend
-npm install
-npm run electron:dev  # Development
-npm run electron:build  # Production
-```
+The codebase is a Cargo workspace: `devtrack-core` holds all models/queries so the TUI, API, and desktop app share one implementation.
 
 ## Contributing
 
-This is a personal project for The No Hands Company. Contributions, suggestions, and feedback are welcome!
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Write tests
-5. Submit a pull request
+Issues, suggestions, and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-© 2024 The No Hands Company. All rights reserved.
-
-This is proprietary software. See [LICENSE](LICENSE) for details.
-
-## Contact
-
-- **Organization**: The No Hands Company
-- **Project**: DevTrack
-- **GitHub**: [The-No-Hands-Company](https://github.com/The-No-Hands-Company)
-
-## Acknowledgments
-
-Built with modern tools and frameworks:
-- C++ Standard Committee for C++23
-- Electron Team
-- React Team
-- The open source community
+MIT — see [LICENSE](LICENSE).
 
 ---
 
-**DevTrack** - Empowering AI-Assisted Development
+**DevTrack** — one developer, many projects, zero friction.

@@ -1,4 +1,4 @@
-import { useDashboardSummary, useTimeEntries } from '@hooks/useApi';
+import { useDashboardSummary, useTimeEntries, useGlobalTasks } from '@hooks/useApi';
 import { cn, formatDuration, formatTimestamp } from '@utils/helpers';
 import {
   FolderGit2,
@@ -10,22 +10,34 @@ import {
   Tag,
   AlertTriangle,
   Play,
+  Square,
   Pause,
+  Calendar,
 } from 'lucide-react';
 import { useAppStore } from '@store/appStore';
-import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export function Dashboard() {
   const { data: summary } = useDashboardSummary();
   const { data: timeEntries } = useTimeEntries('today');
-  const { activeTimer, setActiveTimer } = useAppStore();
-  const [timerRunning, setTimerRunning] = useState(false);
+  const { data: globalTasks } = useGlobalTasks();
+  const { setActiveTimer } = useAppStore();
+  const navigate = useNavigate();
+
+  const openTasks = globalTasks?.filter((t) => t.status === 'Todo') ?? [];
+  const overdueTasks = openTasks.filter((t) => t.due_date && new Date(t.due_date) < new Date(new Date().toDateString()));
+  const dueToday = openTasks.filter((t) => t.due_date && new Date(t.due_date).toDateString() === new Date().toDateString());
 
   const stats = [
     { label: 'Total Projects', value: summary?.total_projects || 0, icon: FolderGit2, color: 'text-blue-500 bg-blue-100 dark:bg-blue-900/30' },
     { label: 'Active Projects', value: summary?.active_projects || 0, icon: GitBranch, color: 'text-green-500 bg-green-100 dark:bg-green-900/30' },
-    { label: 'Total Tasks', value: summary?.total_tasks || 0, icon: CheckSquare, color: 'text-purple-500 bg-purple-100 dark:bg-purple-900/30' },
-    { label: 'Completed', value: summary?.done_tasks || 0, icon: TrendingUp, color: 'text-green-500 bg-green-100 dark:bg-green-900/30' },
+    { label: 'Open Tasks', value: openTasks.length, icon: CheckSquare, color: 'text-purple-500 bg-purple-100 dark:bg-purple-900/30' },
+    {
+      label: overdueTasks.length ? 'Overdue' : 'Completed',
+      value: overdueTasks.length || summary?.done_tasks || 0,
+      icon: overdueTasks.length ? AlertTriangle : TrendingUp,
+      color: overdueTasks.length ? 'text-red-500 bg-red-100 dark:bg-red-900/30' : 'text-green-500 bg-green-100 dark:bg-green-900/30',
+    },
   ];
 
   const timerStats = [
@@ -48,10 +60,39 @@ export function Dashboard() {
         </button>
       </div>
 
+      {/* Due-date alert strip */}
+      {(overdueTasks.length > 0 || dueToday.length > 0) && (
+        <button
+          onClick={() => navigate('/all-tasks')}
+          className={cn(
+            'w-full text-left px-4 py-3 rounded-lg border flex items-center gap-3 transition-colors',
+            overdueTasks.length
+              ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-900/30'
+              : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-900/50 hover:bg-yellow-100 dark:hover:bg-yellow-900/30'
+          )}
+        >
+          <AlertTriangle className={cn('w-4 h-4 flex-shrink-0', overdueTasks.length ? 'text-red-500' : 'text-yellow-500')} />
+          <span className={cn('text-sm', overdueTasks.length ? 'text-red-700 dark:text-red-300' : 'text-yellow-700 dark:text-yellow-300')}>
+            {overdueTasks.length > 0 && (
+              <>{overdueTasks.length} overdue task{overdueTasks.length > 1 ? 's' : ''}</>
+            )}
+            {overdueTasks.length > 0 && dueToday.length > 0 && ' · '}
+            {dueToday.length > 0 && (
+              <>{dueToday.length} due today</>
+            )}
+            <span className="ml-2 underline">view all tasks</span>
+          </span>
+        </button>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
-          <div key={stat.label} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+          <button
+            key={stat.label}
+            onClick={() => navigate('/all-tasks')}
+            className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 text-left hover:border-purple-300 dark:hover:border-purple-700 transition-colors"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{stat.label}</p>
@@ -61,7 +102,7 @@ export function Dashboard() {
                 <stat.icon className="w-6 h-6" />
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -191,4 +232,3 @@ export function Dashboard() {
   );
 }
 
-import { Calendar, Square } from 'lucide-react';

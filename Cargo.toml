@@ -6,6 +6,10 @@ members = [
     "crates/devtrack-api",
     "crates/devtrack-desktop",
 ]
+
+[profile.dev]
+debug = "line-tables-only"
+incremental = true
 exclude = ["src-tauri"]
 
 [workspace.dependencies]

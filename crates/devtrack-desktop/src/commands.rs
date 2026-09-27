@@ -45,10 +45,24 @@ pub struct DashboardSummary {
 }
 
 #[tauri::command]
-pub async fn projects_list(state: State<'_, AppState>, archived: Option<bool>) -> Result<Vec<Project>, String> {
+pub async fn projects_list(state: State<'_, AppState>, archived: Option<bool>) -> Result<Vec<ProjectWithGit>, String> {
     let conn = state.db.lock().unwrap();
-    queries::get_all_projects(&conn, archived.unwrap_or(false))
-        .map_err(|e| e.to_string())
+    let projects = queries::get_all_projects(&conn, archived.unwrap_or(false))
+        .map_err(|e| e.to_string())?;
+    drop(conn);
+    Ok(projects
+        .into_iter()
+        .map(|project| ProjectWithGit {
+            git: get_git_info(&project.path).map(|g| GitInfo {
+                branch: g.branch,
+                is_dirty: g.is_dirty,
+                ahead: g.ahead,
+                behind: g.behind,
+                stashes: g.stashes,
+            }),
+            project,
+        })
+        .collect())
 }
 
 #[tauri::command]
@@ -151,6 +165,22 @@ pub async fn task_delete(state: State<'_, AppState>, id: i64) -> Result<(), Stri
 pub async fn task_toggle(state: State<'_, AppState>, id: i64, status: String) -> Result<(), String> {
     let conn = state.db.lock().unwrap();
     queries::update_task(&conn, id, None, None, Some(&status), None, None).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn tasks_global(state: State<'_, AppState>) -> Result<Vec<Task>, String> {
+    let conn = state.db.lock().unwrap();
+    queries::get_global_tasks(&conn, true).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn git_commit(state: State<'_, AppState>, project_id: i64, message: String) -> Result<String, String> {
+    let conn = state.db.lock().unwrap();
+    let project = queries::get_project_by_id(&conn, project_id).map_err(|e| e.to_string())?;
+    drop(conn);
+    queries::commit_and_push(&project.path, &message)
+        .map(|_| format!("Committed and pushed {}", project.name))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

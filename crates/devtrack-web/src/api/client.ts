@@ -34,9 +34,11 @@ export const api = {
     git: (id: number) => i<GitInfo>('project_git', { id }),
     openPath: (id: number) => i<void>('project_open_path', { id }),
     openTerminal: (id: number) => i<void>('project_open_terminal', { id }),
+    gitCommit: (id: number, message: string) => i<string>('git_commit', { projectId: id, message }),
   },
   tasks: {
     list: (projectId: number) => i<Task[]>('tasks_list', { projectId }),
+    global: () => i<Task[]>('tasks_global'),
     get: (id: number) => i<Task>('task_get', { id }),
     create: (projectId: number, data: CreateTaskRequest) => i<Task>('task_create', {
       projectId,

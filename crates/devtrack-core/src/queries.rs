@@ -161,14 +161,22 @@ pub fn delete_task(conn: &Connection, id: i64) -> Result<()> {
     Ok(())
 }
 
-pub fn get_global_tasks(conn: &Connection) -> Result<Vec<Task>> {
-    let mut stmt = conn.prepare(
+pub fn get_global_tasks(conn: &Connection, include_done: bool) -> Result<Vec<Task>> {
+    let sql = if include_done {
+        "SELECT t.id, t.project_id, p.name, t.title, t.description, t.status, t.priority, t.due_date, t.created_at 
+         FROM tasks t JOIN projects p ON t.project_id = p.id
+         ORDER BY 
+            CASE t.status WHEN 'Todo' THEN 0 WHEN 'Done' THEN 1 ELSE 2 END,
+            CASE t.priority WHEN 'High' THEN 0 WHEN 'Medium' THEN 1 WHEN 'Low' THEN 2 ELSE 3 END,
+            t.created_at"
+    } else {
         "SELECT t.id, t.project_id, p.name, t.title, t.description, t.status, t.priority, t.due_date, t.created_at 
          FROM tasks t JOIN projects p ON t.project_id = p.id WHERE t.status = 'Todo'
          ORDER BY 
             CASE t.priority WHEN 'High' THEN 0 WHEN 'Medium' THEN 1 WHEN 'Low' THEN 2 ELSE 3 END,
             t.created_at"
-    )?;
+    };
+    let mut stmt = conn.prepare(sql)?;
     let rows = stmt.query_map([], |row| Ok(Task {
         id: row.get(0)?,
         project_id: row.get(1)?,
@@ -176,7 +184,7 @@ pub fn get_global_tasks(conn: &Connection) -> Result<Vec<Task>> {
         title: row.get(3)?,
         description: row.get(4)?,
         status: row.get(5)?,
-        priority: row.get(5)?, // Note: priority is at index 6
+        priority: row.get(6)?,
         due_date: row.get(7)?,
         created_at: row.get(8)?,
     }))?;
@@ -364,7 +372,9 @@ pub fn commit_and_push(path: &str, message: &str) -> anyhow::Result<()> {
     let tree_id = index.write_tree()?;
     let tree = repo.find_tree(tree_id)?;
     let sig = repo.signature()?;
-    let parent_commit = repo.head()?.peel_to_commit().ok();
+    
+    // Unborn HEAD (fresh repo): commit with no parents
+    let parent_commit = repo.head().ok().and_then(|h| h.peel_to_commit().ok());
     let parents: Vec<&git2::Commit> = parent_commit.iter().collect();
     
     repo.commit(
@@ -376,8 +386,13 @@ pub fn commit_and_push(path: &str, message: &str) -> anyhow::Result<()> {
         &parents,
     )?;
     
-    let mut remote = repo.find_remote("origin")?;
-    remote.push(&["refs/heads/main"], None)?;
+    // Push only if a remote exists; branch name follows HEAD
+    if repo.find_remote("origin").is_ok() {
+        let head_branch = repo.head()?.shorthand().unwrap_or("main").to_string();
+        let refspec = format!("refs/heads/{}", head_branch);
+        let mut remote = repo.find_remote("origin")?;
+        remote.push(&[refspec.as_str()], None)?;
+    }
     
     Ok(())
 }

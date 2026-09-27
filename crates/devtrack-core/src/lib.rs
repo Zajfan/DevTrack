@@ -144,31 +144,53 @@ impl GitInfo {
 
 pub fn get_git_info(path: &str) -> Option<GitInfo> {
     let mut repo = Repository::open(path).ok()?;
-    let head = repo.head().ok()?;
-    let branch = head.shorthand().unwrap_or("unknown").to_string();
-    let local_oid = head.target()?;
-    drop(head);
-    
-    let (ahead, behind) = if let Ok(branch_ref) = repo.find_branch(&branch, BranchType::Local) {
-        if let Ok(upstream) = branch_ref.upstream() {
-            let upstream_oid = upstream.get().target()?;
-            repo.graph_ahead_behind(local_oid, upstream_oid).unwrap_or((0, 0))
+
+    // Unborn HEAD (fresh `git init`, no commits) still has a branch name
+    let (branch, local_oid) = match repo.head() {
+        Ok(head) => {
+            let b = head.shorthand().unwrap_or("unknown").to_string();
+            let oid = head.target();
+            (b, oid)
+        }
+        Err(_) if repo.is_empty().unwrap_or(false) => {
+            let b = repo
+                .config()
+                .ok()
+                .and_then(|c| c.get_string("init.defaultbranch").ok())
+                .unwrap_or_else(|| "main".to_string());
+            (b, None)
+        }
+        Err(_) => return None,
+    };
+
+    // Upstream tracking needs at least one commit
+    let (ahead, behind) = if let Some(local_oid) = local_oid {
+        if let Ok(branch_ref) = repo.find_branch(&branch, BranchType::Local) {
+            if let Ok(upstream) = branch_ref.upstream() {
+                if let Some(upstream_oid) = upstream.get().target() {
+                    repo.graph_ahead_behind(local_oid, upstream_oid).unwrap_or((0, 0))
+                } else {
+                    (0, 0)
+                }
+            } else {
+                (0, 0)
+            }
         } else {
             (0, 0)
         }
     } else {
         (0, 0)
     };
-    
+
     let mut stashes = 0;
     let _ = repo.stash_foreach(|_index, _oid, _msg| {
         stashes += 1;
         true
     });
-    
+
     let mut status_options = StatusOptions::new();
     let statuses = repo.statuses(Some(&mut status_options)).ok()?;
     let is_dirty = !statuses.is_empty();
-    
+
     Some(GitInfo { branch, is_dirty, ahead, behind, stashes })
 }

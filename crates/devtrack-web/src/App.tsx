@@ -11,6 +11,7 @@ import { Tasks } from './pages/Tasks';
 import { TimerPage } from './pages/Timer';
 import { Reports } from './pages/Reports';
 import { Notes } from './pages/Notes';
+import { GlobalTasks } from './pages/GlobalTasks';
 import { Settings } from './pages/Settings';
 import { useSystemTray } from './components/SystemTray';
 import { useGlobalShortcuts } from './components/GlobalShortcuts';
@@ -111,6 +112,7 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="projects" element={<Projects />} />
             <Route path="tasks" element={<Tasks />} />
+            <Route path="all-tasks" element={<GlobalTasks />} />
             <Route path="notes" element={<Notes />} />
             <Route path="timer" element={<TimerPage />} />
             <Route path="reports" element={<Reports />} />

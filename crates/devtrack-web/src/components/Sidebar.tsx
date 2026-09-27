@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   FolderGit2,
   CheckSquare,
+  Globe,
   StickyNote,
   Timer,
   BarChart3,
@@ -21,7 +22,7 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-type ViewMode = 'dashboard' | 'projects' | 'tasks' | 'notes' | 'timer' | 'reports' | 'settings';
+type ViewMode = 'dashboard' | 'projects' | 'tasks' | 'all-tasks' | 'notes' | 'timer' | 'reports' | 'settings';
 
 function useWindowWidth() {
   const [width, setWidth] = useState(window.innerWidth);
@@ -48,6 +49,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, accel: 'Ctrl+1' },
     { id: 'projects', label: 'Projects', icon: FolderGit2, accel: 'Ctrl+2' },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare, accel: 'Ctrl+3' },
+    { id: 'all-tasks', label: 'All Tasks', icon: Globe, accel: '' },
     { id: 'notes', label: 'Notes', icon: StickyNote, accel: 'Ctrl+4' },
     { id: 'timer', label: 'Timer', icon: Timer, accel: 'Ctrl+5' },
     { id: 'reports', label: 'Reports', icon: BarChart3, accel: 'Ctrl+6' },

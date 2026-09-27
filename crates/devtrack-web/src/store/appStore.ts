@@ -29,7 +29,7 @@ interface AppState {
   sidebarOpen: boolean;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
-  viewMode: 'dashboard' | 'projects' | 'tasks' | 'notes' | 'timer' | 'reports' | 'settings';
+  viewMode: 'dashboard' | 'projects' | 'tasks' | 'all-tasks' | 'notes' | 'timer' | 'reports' | 'settings';
   setViewMode: (mode: AppState['viewMode']) => void;
 }
 

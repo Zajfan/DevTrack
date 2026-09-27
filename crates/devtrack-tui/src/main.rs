@@ -322,7 +322,7 @@ fn run_dashboard(conn: &Connection, show_archived: bool) -> anyhow::Result<()> {
                     f.render_widget(task_list, chunks[1]);
                 }
                 ViewMode::GlobalTasks => {
-                    let tasks = get_global_tasks(conn).unwrap_or_default();
+                    let tasks = get_global_tasks(conn, false).unwrap_or_default();
                     let items: Vec<ListItem> = tasks.iter().map(|t| {
                         let timer_indicator = if active_timer.map(|(id, _)| id).unwrap_or(-1) == t.id { " ⏱" } else { "" };
                         ListItem::new(format!("[{}] ({}) ({}) {} - {}{}", t.id, t.priority, t.project_name, t.title, t.status, timer_indicator))
@@ -692,7 +692,7 @@ fn run_dashboard(conn: &Connection, show_archived: bool) -> anyhow::Result<()> {
                     match key.code {
                         KeyCode::Esc | KeyCode::Char('q') => view_mode = ViewMode::Projects,
                         KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            let tasks = get_global_tasks(conn).unwrap_or_default();
+                            let tasks = get_global_tasks(conn, false).unwrap_or_default();
                             if let Some(t) = tasks.get(task_selected_index) {
                                 if let Some((running_id, _)) = active_timer {
                                     if running_id == t.id {
@@ -718,7 +718,7 @@ fn run_dashboard(conn: &Connection, show_archived: bool) -> anyhow::Result<()> {
                         }
                         KeyCode::Up => if task_selected_index > 0 { task_selected_index -= 1; }
                         KeyCode::Down => {
-                            let tasks = get_global_tasks(conn).unwrap_or_default();
+                            let tasks = get_global_tasks(conn, false).unwrap_or_default();
                             if task_selected_index < tasks.len().saturating_sub(1) { task_selected_index += 1; }
                         }
                         _ => {}
