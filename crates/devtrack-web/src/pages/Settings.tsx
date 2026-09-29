@@ -11,6 +11,7 @@ import {
   Save,
   Loader2,
   Trash2,
+  RefreshCw,
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -301,6 +302,40 @@ function NotificationSettings({ settings, setSettings }: { settings: any; setSet
 }
 
 function SyncSettings({ settings, setSettings }: { settings: any; setSettings: any }) {
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      // persist first so the backend reads the current URL
+      await invoke('settings_set', { settings });
+      const result = await invoke<string>('sync_test');
+      setTestResult(result);
+    } catch (error) {
+      setTestResult(String(error));
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleSyncNow = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      await invoke('settings_set', { settings });
+      const result = await invoke<string>('sync_now');
+      setSyncResult(result);
+    } catch (error) {
+      setSyncResult(String(error));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Sync Settings</h3>
@@ -312,39 +347,62 @@ function SyncSettings({ settings, setSettings }: { settings: any; setSettings: a
             onChange={(e) => setSettings({ ...settings, syncEnabled: e.target.checked })}
             className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
           />
-          <span className="text-gray-700 dark:text-gray-300">Enable automatic sync</span>
+          <span className="text-gray-700 dark:text-gray-300">Enable automatic sync (on start + every 5 minutes)</span>
         </label>
       </div>
 
       <div className="space-y-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sync Provider</label>
-        <select
-          value={settings.syncProvider}
-          onChange={(e) => setSettings({ ...settings, syncProvider: e.target.value })}
-          className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-        >
-          <option value="webdav">WebDAV</option>
-          <option value="s3">AWS S3 / S3-Compatible</option>
-          <option value="git">Git Repository</option>
-        </select>
-      </div>
-
-      <div className="space-y-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sync URL / Endpoint</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Sync repository (private GitHub repo recommended)
+        </label>
         <input
           type="text"
           value={settings.syncUrl}
           onChange={(e) => setSettings({ ...settings, syncUrl: e.target.value })}
-          className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-          placeholder="https://webdav.example.com/remote.php/dav/files/user/"
+          className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-mono text-sm"
+          placeholder="git@github.com:you/DevTrackSync.git"
         />
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Create an empty <span className="font-medium">private</span> repository, paste its clone URL here.
+          Your database and notes sync as commits — full history is your backup.
+        </p>
       </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleTest}
+          disabled={testing || !settings.syncUrl}
+          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 flex items-center gap-2"
+        >
+          {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitBranch className="w-4 h-4" />}
+          Test Connection
+        </button>
+        <button
+          onClick={handleSyncNow}
+          disabled={syncing || !settings.syncUrl}
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-40 flex items-center gap-2"
+        >
+          {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          Sync Now
+        </button>
+      </div>
+
+      {testResult && (
+        <p className={cn('text-sm', testResult === 'Connection OK' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
+          {testResult}
+        </p>
+      )}
+      {syncResult && (
+        <p className={cn('text-sm', syncResult.startsWith('Sync complete') ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
+          {syncResult}
+        </p>
+      )}
 
       <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Sync will automatically backup your database, notes, and settings to the configured provider.
+          Sync backs up your local database before every sync (<span className="font-mono text-xs">backups/pre-sync-*.db</span>).
           <br />
-          <span className="text-purple-600 dark:text-purple-400">Note:</span> Git sync requires a remote repository with write access.
+          <span className="text-purple-600 dark:text-purple-400">Note:</span> syncing requires git access to the repository (SSH key or credentials).
         </p>
       </div>
     </div>

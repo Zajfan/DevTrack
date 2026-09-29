@@ -396,3 +396,27 @@ pub fn commit_and_push(path: &str, message: &str) -> anyhow::Result<()> {
     
     Ok(())
 }
+/// Simple key-value metadata store (sync state, etc.)
+pub fn set_settings_metadata(config: &crate::Config, key: &str, value: &str) -> Result<()> {
+    let conn = crate::get_db_connection(config)?;
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+        [],
+    )?;
+    conn.execute(
+        "INSERT INTO metadata (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![key, value],
+    )?;
+    Ok(())
+}
+
+pub fn get_settings_metadata(config: &crate::Config, key: &str) -> Option<String> {
+    let conn = crate::get_db_connection(config).ok()?;
+    conn.query_row(
+        "SELECT value FROM metadata WHERE key = ?1",
+        params![key],
+        |row| row.get(0),
+    )
+    .ok()
+}

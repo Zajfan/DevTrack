@@ -2,6 +2,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_notification::NotificationExt;
 use devtrack_core::{queries, get_git_info, scan_projects, Config, format_duration};
 use devtrack_core::models::{Project, ProjectWithGit, GitInfo, Task, SubTask, TimeEntry, TimeLogSummary};
+use devtrack_core::sync::{SyncSettings, SyncStatus};
 use crate::{AppState, state::now_ts, settings::Settings};
 use std::process::Command;
 use chrono::Local;
@@ -512,4 +513,62 @@ pub async fn settings_get(app: AppHandle) -> Result<Settings, String> {
 #[tauri::command]
 pub async fn settings_set(app: AppHandle, settings: Settings) -> Result<(), String> {
     crate::settings::set_settings(&app, settings)
+}
+#[tauri::command]
+pub async fn sync_settings_get(app: AppHandle) -> Result<SyncSettings, String> {
+    let settings = crate::settings::get_settings(&app)?;
+    Ok(SyncSettings {
+        enabled: settings.sync_enabled,
+        repo_url: settings.sync_url.clone(),
+        branch: "main".to_string(),
+    })
+}
+
+#[tauri::command]
+pub async fn sync_test(app: AppHandle) -> Result<String, String> {
+    let settings = crate::settings::get_settings(&app)?;
+    let sync = SyncSettings {
+        enabled: settings.sync_enabled,
+        repo_url: settings.sync_url,
+        branch: "main".to_string(),
+    };
+    devtrack_core::sync::test_connection(&sync)
+}
+
+#[tauri::command]
+pub async fn sync_now(app: AppHandle, state: State<'_, AppState>) -> Result<String, String> {
+    // Refuse to sync while a timer is running (in-flight entry would be lost)
+    if state.get_active_timer().is_some() {
+        return Err("A timer is running — stop it before syncing".to_string());
+    }
+    let settings = crate::settings::get_settings(&app)?;
+    let sync = SyncSettings {
+        enabled: settings.sync_enabled,
+        repo_url: settings.sync_url,
+        branch: "main".to_string(),
+    };
+    let result = devtrack_core::sync::sync_now(&state.config, &sync);
+
+    // The sync may have restored the DB file from remote — the app's long-lived
+    // connection is stale; reopen it so subsequent queries see the fresh data
+    if result.is_ok() {
+        if let Ok(fresh) = devtrack_core::get_db_connection(&state.config) {
+            *state.db.lock().unwrap() = fresh;
+        }
+    }
+
+    // Notify the frontend that data may have changed
+    let _ = app.emit("sync-complete", ());
+    result
+}
+
+#[tauri::command]
+pub async fn sync_status(state: State<'_, AppState>, app: AppHandle) -> Result<SyncStatus, String> {
+    let settings = crate::settings::get_settings(&app)?;
+    let sync = SyncSettings {
+        enabled: settings.sync_enabled,
+        repo_url: settings.sync_url,
+        branch: "main".to_string(),
+    };
+    Ok(devtrack_core::sync::sync_status(&state.config, &sync))
 }

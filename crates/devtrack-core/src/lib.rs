@@ -8,6 +8,7 @@ use walkdir::WalkDir;
 
 pub mod models;
 pub mod queries;
+pub mod sync;
 
 pub use models::*;
 pub use queries::*;

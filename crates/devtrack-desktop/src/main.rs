@@ -138,6 +138,10 @@ fn main() {
             commands::quit_app,
             commands::settings_get,
             commands::settings_set,
+            commands::sync_settings_get,
+            commands::sync_test,
+            commands::sync_now,
+            commands::sync_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
