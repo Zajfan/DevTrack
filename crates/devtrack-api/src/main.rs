@@ -267,10 +267,11 @@ async fn create_task(State(state): State<Arc<AppState>>, Path(project_id): Path<
     let description = payload.description.clone();
     let priority = payload.priority.unwrap_or_else(|| "Medium".to_string());
     let due_date = payload.due_date.clone();
+    let target_version = payload.target_version.clone();
     
     let result = spawn_blocking(move || {
         let conn = open_conn(&db_path)?;
-        let id = devtrack_core::queries::create_task(&conn, project_id, &title, description.as_deref(), Some(&priority), due_date.as_deref())?;
+        let id = devtrack_core::queries::create_task_versioned(&conn, project_id, &title, description.as_deref(), Some(&priority), due_date.as_deref(), target_version.as_deref())?;
         devtrack_core::queries::get_task_by_id(&conn, id)
     }).await;
     
@@ -305,10 +306,11 @@ async fn update_task(State(state): State<Arc<AppState>>, Path(id): Path<i64>, Js
     let status = payload.status.clone();
     let priority = payload.priority.clone();
     let due_date = payload.due_date.clone();
+    let target_version = payload.target_version.clone();
     
     let result = spawn_blocking(move || {
         let conn = open_conn(&db_path)?;
-        devtrack_core::queries::update_task(&conn, id, title.as_deref(), description.as_deref(), status.as_deref(), priority.as_deref(), due_date.as_deref())
+        devtrack_core::queries::update_task_versioned(&conn, id, title.as_deref(), description.as_deref(), status.as_deref(), priority.as_deref(), due_date.as_deref(), target_version.as_deref())
     }).await;
     
     match result {

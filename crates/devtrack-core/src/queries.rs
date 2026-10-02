@@ -89,13 +89,14 @@ pub fn delete_project(conn: &Connection, id: i64) -> Result<()> {
 
 pub fn get_tasks_for_project(conn: &Connection, project_id: i64) -> Result<Vec<Task>> {
     let mut stmt = conn.prepare(
-        "SELECT t.id, t.title, t.description, t.status, t.priority, t.due_date, t.created_at, p.name 
+        "SELECT t.id, t.title, t.description, t.status, t.priority, t.due_date, t.created_at, p.name, t.target_version
          FROM tasks t JOIN projects p ON t.project_id = p.id WHERE t.project_id = ?1"
     )?;
     let rows = stmt.query_map([project_id], |row| Ok(Task {
         id: row.get(0)?,
         project_id,
         project_name: row.get(7)?,
+        target_version: row.get(8)?,
         title: row.get(1)?,
         description: row.get(2)?,
         status: row.get(3)?,
@@ -108,7 +109,7 @@ pub fn get_tasks_for_project(conn: &Connection, project_id: i64) -> Result<Vec<T
 
 pub fn get_task_by_id(conn: &Connection, id: i64) -> Result<Task> {
     conn.query_row(
-        "SELECT t.id, t.project_id, p.name, t.title, t.description, t.status, t.priority, t.due_date, t.created_at 
+        "SELECT t.id, t.project_id, p.name, t.title, t.description, t.status, t.priority, t.due_date, t.created_at, t.target_version
          FROM tasks t JOIN projects p ON t.project_id = p.id WHERE t.id = ?1",
         params![id],
         |row| Ok(Task {
@@ -121,6 +122,7 @@ pub fn get_task_by_id(conn: &Connection, id: i64) -> Result<Task> {
             priority: row.get(6)?,
             due_date: row.get(7)?,
             created_at: row.get(8)?,
+            target_version: row.get(9)?,
         }),
     )
 }
@@ -163,14 +165,14 @@ pub fn delete_task(conn: &Connection, id: i64) -> Result<()> {
 
 pub fn get_global_tasks(conn: &Connection, include_done: bool) -> Result<Vec<Task>> {
     let sql = if include_done {
-        "SELECT t.id, t.project_id, p.name, t.title, t.description, t.status, t.priority, t.due_date, t.created_at 
+        "SELECT t.id, t.project_id, p.name, t.title, t.description, t.status, t.priority, t.due_date, t.created_at, t.target_version
          FROM tasks t JOIN projects p ON t.project_id = p.id
          ORDER BY 
             CASE t.status WHEN 'Todo' THEN 0 WHEN 'Done' THEN 1 ELSE 2 END,
             CASE t.priority WHEN 'High' THEN 0 WHEN 'Medium' THEN 1 WHEN 'Low' THEN 2 ELSE 3 END,
             t.created_at"
     } else {
-        "SELECT t.id, t.project_id, p.name, t.title, t.description, t.status, t.priority, t.due_date, t.created_at 
+        "SELECT t.id, t.project_id, p.name, t.title, t.description, t.status, t.priority, t.due_date, t.created_at, t.target_version
          FROM tasks t JOIN projects p ON t.project_id = p.id WHERE t.status = 'Todo'
          ORDER BY 
             CASE t.priority WHEN 'High' THEN 0 WHEN 'Medium' THEN 1 WHEN 'Low' THEN 2 ELSE 3 END,
@@ -187,6 +189,7 @@ pub fn get_global_tasks(conn: &Connection, include_done: bool) -> Result<Vec<Tas
         priority: row.get(6)?,
         due_date: row.get(7)?,
         created_at: row.get(8)?,
+        target_version: row.get(9)?,
     }))?;
     rows.collect()
 }
@@ -540,4 +543,35 @@ pub fn project_stats(conn: &Connection, project_id: i64) -> Result<(i64, i64)> {
         |row| row.get(0),
     )?;
     Ok((open, total))
+}
+
+/// Empty means unscheduled; allow two/three components and SemVer prereleases.
+pub fn validate_task_version(value: &str) -> Result<String> {
+    use std::sync::OnceLock;
+    static PATTERN: OnceLock<regex::Regex> = OnceLock::new();
+    let value = value.trim();
+    let pattern = PATTERN.get_or_init(|| regex::Regex::new(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:\.(0|[1-9][0-9]*))?(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$").unwrap());
+    if value.len() > 100 || (!value.is_empty() && !pattern.is_match(value)) {
+        return Err(rusqlite::Error::InvalidParameterName("Use a version such as 1.0, 0.1.0, or 0.1.0-alpha.1".into()));
+    }
+    Ok(value.into())
+}
+
+pub fn create_task_versioned(conn: &Connection, project_id: i64, title: &str, description: Option<&str>, priority: Option<&str>, due_date: Option<&str>, target_version: Option<&str>) -> Result<i64> {
+    let version = validate_task_version(target_version.unwrap_or(""))?;
+    let tx = conn.unchecked_transaction()?;
+    let id = create_task(&tx, project_id, title, description, priority, due_date)?;
+    tx.execute("UPDATE tasks SET target_version=?1 WHERE id=?2", params![version, id])?;
+    tx.commit()?;
+    Ok(id)
+}
+
+pub fn update_task_versioned(conn: &Connection, id: i64, title: Option<&str>, description: Option<&str>, status: Option<&str>, priority: Option<&str>, due_date: Option<&str>, target_version: Option<&str>) -> Result<()> {
+    let version = target_version.map(validate_task_version).transpose()?;
+    let tx = conn.unchecked_transaction()?;
+    update_task(&tx, id, title, description, status, priority, due_date)?;
+    if let Some(version) = version {
+        tx.execute("UPDATE tasks SET target_version=?1 WHERE id=?2", params![version, id])?;
+    }
+    tx.commit()
 }

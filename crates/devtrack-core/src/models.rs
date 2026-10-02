@@ -53,6 +53,8 @@ pub struct Task {
     pub status: String,
     pub priority: String,
     pub due_date: Option<String>,
+    #[serde(default)]
+    pub target_version: String,
     pub created_at: String,
 }
 
@@ -127,6 +129,7 @@ pub struct UpdateProjectRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateTaskRequest {
+    pub target_version: Option<String>,
     pub title: String,
     pub description: Option<String>,
     pub priority: Option<String>,
@@ -135,6 +138,7 @@ pub struct CreateTaskRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateTaskRequest {
+    pub target_version: Option<String>,
     pub title: Option<String>,
     pub description: Option<String>,
     pub status: Option<String>,
@@ -187,6 +191,7 @@ impl Default for Task {
             status: "Todo".to_string(),
             priority: "Medium".to_string(),
             due_date: None,
+            target_version: String::new(),
             created_at: Utc::now().to_rfc3339(),
         }
     }

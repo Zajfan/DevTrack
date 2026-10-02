@@ -104,6 +104,8 @@ export const useCreateTask = () => {
     onSuccess: () => {
       // prefix-match: invalidates ['tasks', projectId] AND ['tasks', 'global']
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['project-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     },
   });
 };
@@ -115,6 +117,8 @@ export const useUpdateTask = () => {
       api.tasks.update(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['project-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       queryClient.invalidateQueries({ queryKey: ['task', id] });
     },
   });
@@ -126,6 +130,8 @@ export const useDeleteTask = () => {
     mutationFn: (id: number) => api.tasks.delete(id),
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['project-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       queryClient.invalidateQueries({ queryKey: ['task', id] });
     },
   });
@@ -138,6 +144,8 @@ export const useToggleTask = () => {
       api.tasks.toggle(id, status),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['project-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       queryClient.invalidateQueries({ queryKey: ['task', id] });
     },
   });

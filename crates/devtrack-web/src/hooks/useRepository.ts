@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
-import type { DirectoryListing, WorkHistory } from "../types/repository";
+import type { DirectoryListing, WorkHistory, PlannedIssues } from "../types/repository";
 
 export const useProjectDirectory = (id: number, path: string) =>
   useQuery({
@@ -31,3 +31,6 @@ export const useSyncProjectHistory = (id: number) => {
 };
 export const openProjectGitHub = (id: number, sha?: string) =>
   invoke<void>("project_github_open", { id, sha });
+
+export const useProjectIssues = (id: number | null, enabled: boolean) => useQuery({ queryKey: ['project-issues', id], queryFn: () => invoke<PlannedIssues>('project_issues', { id, refresh: false }), enabled: enabled && !!id });
+export const useSyncProjectIssues = (id: number | null) => { const client = useQueryClient(); return useMutation({ mutationFn: (page: number = 1) => invoke<PlannedIssues>('project_issues', { id, refresh: true, page }), onSuccess: data => client.setQueryData(['project-issues', id], data) }); };

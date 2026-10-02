@@ -87,6 +87,10 @@ pub fn init_db(config: &Config) -> Result<Connection> {
     let _ = conn.execute("ALTER TABLE tasks ADD COLUMN due_date TEXT", []);
     let _ = conn.execute("ALTER TABLE time_entries ADD COLUMN paused_at INTEGER", []);
     
+    let has_version: bool = conn.query_row("SELECT EXISTS(SELECT 1 FROM pragma_table_info('tasks') WHERE name='target_version')", [], |row| row.get(0))?;
+    if !has_version {
+        conn.execute("ALTER TABLE tasks ADD COLUMN target_version TEXT NOT NULL DEFAULT ''", [])?;
+    }
     Ok(conn)
 }
 

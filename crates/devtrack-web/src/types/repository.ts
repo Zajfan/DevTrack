@@ -39,3 +39,5 @@ export interface WorkHistory {
   has_more: boolean;
   next_page: number;
 }
+
+export interface PlannedIssues { issues: { number: number; title: string; description: string; url: string; target_version: string; milestone: string | null; labels: string[]; created_at: string }[]; repository: string | null; notice: string | null; has_more: boolean; next_page: number; }

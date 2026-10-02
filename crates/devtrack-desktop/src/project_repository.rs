@@ -279,3 +279,79 @@ pub async fn project_documentation_link(
     }
     opener::open(parsed.as_str()).map_err(|e| e.to_string())
 }
+
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct PlannedIssue {
+    number: i64,
+    title: String,
+    description: String,
+    url: String,
+    target_version: String,
+    milestone: Option<String>,
+    labels: Vec<String>,
+    created_at: String,
+}
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct PlannedIssues {
+    issues: Vec<PlannedIssue>,
+    repository: Option<String>,
+    notice: Option<String>,
+    has_more: bool,
+    next_page: usize,
+}
+fn normalize_issues(items: &[Value], repo: &str) -> Vec<PlannedIssue> {
+    items.iter().filter(|item| item.get("pull_request").is_none()).filter_map(|item| {
+        let number = item["number"].as_i64()?;
+        let milestone = item["milestone"]["title"].as_str().map(str::to_string);
+        let target_version = milestone.as_deref().and_then(|title| {
+            title.split_whitespace().find_map(|part| {
+                let candidate = part.trim_start_matches('v');
+                queries::validate_task_version(candidate).ok().filter(|v| !v.is_empty())
+            })
+        }).unwrap_or_default();
+        Some(PlannedIssue {
+            number, title: item["title"].as_str()?.into(),
+            description: item["body"].as_str().unwrap_or("").chars().take(8000).collect(),
+            url: format!("https://github.com/{repo}/issues/{number}"),
+            target_version, milestone,
+            labels: item["labels"].as_array().map(|labels| labels.iter().filter_map(|l|l["name"].as_str().map(str::to_string)).collect()).unwrap_or_default(),
+            created_at: item["created_at"].as_str().unwrap_or("").into(),
+        })
+    }).collect()
+}
+#[tauri::command]
+pub async fn project_issues(state: State<'_, AppState>, id: i64, refresh: Option<bool>, page: Option<usize>) -> Result<PlannedIssues,String> {
+    let project_root = root(&state,id)?;
+    let (repo,_,_) = tauri::async_runtime::spawn_blocking(move || repository::repository_info(&project_root)).await.map_err(|e|e.to_string())?;
+    let cache_path = state.config.data_dir.join("history").join(format!("issues-{id}.json"));
+    let cached = std::fs::read(&cache_path).ok().and_then(|b|serde_json::from_slice::<PlannedIssues>(&b).ok()).filter(|c|c.repository==repo);
+    if !refresh.unwrap_or(false) { if let Some(cached)=cached.as_ref() { return Ok(cached.clone()); } }
+    let Some(repo)=repo else { return Ok(PlannedIssues { issues:vec![],repository:None,notice:Some("No GitHub origin found. Local tasks are available below.".into()),has_more:false,next_page:1 }); };
+    let page=page.unwrap_or(1).clamp(1,1000);
+    let response=github(&format!("repos/{repo}/issues"),&[("state","open".into()),("per_page","100".into()),("page",page.to_string())]).await;
+    let response=match response { Ok(response)=>response, Err(e)=>{ if let Some(mut cached)=cached { cached.notice=Some(format!("{e} Showing cached open issues; their status may have changed.")); return Ok(cached); } return Err(e); } };
+    let items=response.as_array().ok_or("Unexpected GitHub issue response")?;
+    let mut issues=normalize_issues(items,&repo);
+    if page>1 { if let Some(cached)=cached { issues.extend(cached.issues); } }
+    let mut seen=std::collections::HashSet::new(); issues.retain(|i|seen.insert(i.number));
+    let mut result=PlannedIssues { issues,repository:Some(repo),notice:Some("GitHub issues cover the whole repository, including projects saved as subfolders. Milestones supply target versions; edit issues on GitHub.".into()),has_more:items.len()==100,next_page:page+1 };
+    let save=(||->Result<(),String>{std::fs::create_dir_all(cache_path.parent().unwrap()).map_err(|e|e.to_string())?; let temporary=cache_path.with_extension("tmp");std::fs::write(&temporary,serde_json::to_vec(&result).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;std::fs::rename(temporary,&cache_path).map_err(|e|e.to_string()) })();
+    if save.is_err() { result.notice=Some("Issues loaded but could not be cached for offline use.".into()); }
+    Ok(result)
+}
+
+#[cfg(test)]
+mod issue_tests {
+    use super::*;
+    #[test]
+    fn excludes_pull_requests_and_uses_milestone_versions() {
+        let items=serde_json::json!([
+            {"number":1,"title":"Planned feature","milestone":{"title":"Release v1.0"},"labels":[{"name":"feature"}]},
+            {"number":2,"title":"Alpha","milestone":{"title":"0.1.0-alpha.1"}},
+            {"number":3,"title":"Unscheduled","milestone":{"title":"Future work"}},
+            {"number":4,"title":"PR","pull_request":{}}
+        ]);
+        let issues=normalize_issues(items.as_array().unwrap(),"owner/repo");
+        assert_eq!(issues.len(),3); assert_eq!(issues[0].target_version,"1.0"); assert_eq!(issues[1].target_version,"0.1.0-alpha.1"); assert_eq!(issues[2].target_version,""); assert_eq!(issues[0].url,"https://github.com/owner/repo/issues/1");
+    }
+}

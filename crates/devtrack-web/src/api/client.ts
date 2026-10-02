@@ -46,6 +46,7 @@ export const api = {
       description: data.description,
       priority: data.priority,
       dueDate: data.due_date,
+      targetVersion: data.target_version,
     }),
     update: (id: number, data: UpdateTaskRequest) => i<void>('task_update', {
       id,
@@ -54,6 +55,7 @@ export const api = {
       status: data.status,
       priority: data.priority,
       dueDate: data.due_date,
+      targetVersion: data.target_version,
     }),
     delete: (id: number) => i<void>('task_delete', { id }),
     toggle: (id: number, status: string) => i<void>('task_toggle', { id, status }),

@@ -21,6 +21,12 @@ import urllib.request
 binary = Path(sys.argv[1] if len(sys.argv) > 1 else 'target/release/devtrack-desktop').resolve()
 artifacts = Path(tempfile.mkdtemp(prefix='devtrack-ui-test-'))
 env = os.environ.copy()
+fixture_bin = artifacts / 'bin'
+fixture_bin.mkdir()
+fixture_gh = fixture_bin / 'gh'
+fixture_gh.write_text("#!/usr/bin/env python3\nimport os,sys,json\nif 'repos/fixture/repo/issues' in sys.argv:\n print(json.dumps([{'number':42,'title':'GitHub planned feature','body':'Open issue from fixture','milestone':{'title':'v0.5'},'labels':[],'created_at':'2026-01-01T00:00:00Z'},{'number':43,'title':'Pull request hidden','pull_request':{}}]))\nelse:\n os.execv('/usr/bin/gh',['gh',*sys.argv[1:]])\n")
+fixture_gh.chmod(0o755)
+env['PATH'] = str(fixture_bin) + os.pathsep + env.get('PATH','')
 for key, name in [('XDG_DATA_HOME', 'data'), ('XDG_CONFIG_HOME', 'config'), ('XDG_CACHE_HOME', 'cache')]:
     directory = artifacts / name
     directory.mkdir()
@@ -93,6 +99,8 @@ with (artifacts / 'driver.log').open('w') as log:
                 if evaluate(script):
                     return
                 time.sleep(0.25)
+            (artifacts / 'failure-page.txt').write_text(evaluate('return document.body.innerText'))
+            (artifacts / 'failure.png').write_bytes(base64.b64decode(request(session + '/screenshot')))
             raise AssertionError(message + ': ' + str(evaluate('return window.__testErrors')))
 
         def open_project_form():
@@ -186,6 +194,46 @@ with (artifacts / 'driver.log').open('w') as log:
         evaluate("document.querySelector('.work-expand').click()")
         wait_for("return !!document.querySelector('.work-evidence')", 'Commit evidence expansion failed')
         (artifacts / 'project-work.png').write_bytes(base64.b64decode(request(session + '/screenshot')))
+        subprocess.run(['git','-C',str(project_dir),'remote','add','origin','https://github.com/fixture/repo.git'],check=True,capture_output=True)
+        evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Planned work').click()")
+        wait_for("return [...document.querySelectorAll('h1')].some(h => h.innerText === 'Planned work')", 'Planned work tab failed')
+        wait_for("return document.querySelector('.github-issue-row')?.innerText.includes('GitHub planned feature')", 'GitHub issue did not load')
+        assert not evaluate("return document.body.innerText.includes('Pull request hidden')"), 'Pull request leaked into planned issues'
+        for title, version in [('Later release','1.10'), ('Alpha stage','0.1.0-alpha.1'), ('Sooner release','1.2')]:
+            evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Add Task').click()")
+            wait_for("return !!document.querySelector('#task-title')", 'Task creation form failed')
+            fill('#task-title',title)
+            fill('#task-version',version)
+            evaluate("document.querySelector('form button[type=submit]').click()")
+            wait_for("return !document.querySelector('#task-title')", 'Task creation failed')
+        evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Newest').click()")
+        wait_for("return [...document.querySelectorAll('h3')].at(-1)?.innerText.includes('GitHub planned feature')", 'Newest sorting did not compare local and GitHub dates')
+        evaluate("const e=document.querySelector('[aria-label=\"Filter task source\"]');e.value='github';e.dispatchEvent(new Event('change',{bubbles:true}))")
+        wait_for("return document.querySelectorAll('[aria-label=\"Edit task\"]').length === 0 && document.querySelectorAll('.github-issue-row').length === 1", 'GitHub source filter failed')
+        evaluate("const e=document.querySelector('[aria-label=\"Filter task source\"]');e.value='all';e.dispatchEvent(new Event('change',{bubbles:true}))")
+        evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim().toLowerCase() === 'version').click()")
+        wait_for("return document.querySelectorAll('.task-version-heading').length === 4", 'Version groups failed')
+        assert evaluate("return [...document.querySelectorAll('.task-version-heading')].map(e=>e.firstChild.textContent).join('|')") == 'Version 0.1.0-alpha.1|Version 0.5|Version 1.2|Version 1.10', 'Version order is lexical instead of numeric'
+        evaluate("const e=document.querySelector('[aria-label=\"Filter target version\"]');e.value='1.2';e.dispatchEvent(new Event('change',{bubbles:true}))")
+        wait_for("return document.querySelectorAll('[aria-label=\"Edit task\"]').length === 1", 'Task version filter failed')
+        evaluate("document.querySelector('[aria-label=\"Edit task\"]').click()")
+        wait_for("return document.querySelector('#task-version')?.value === '1.2'", 'Task version not loaded for editing')
+        fill('#task-version','1.0')
+        evaluate("document.querySelector('form button[type=submit]').click()")
+        wait_for("return !document.querySelector('#task-title')", 'Task version edit failed')
+        evaluate("const e=document.querySelector('[aria-label=\"Filter target version\"]');e.value='all';e.dispatchEvent(new Event('change',{bubbles:true}))")
+        wait_for("return document.querySelector('.task-version-heading')?.innerText.includes('0.1.0-alpha.1')", 'Version filter reset failed')
+        evaluate("document.querySelector('[aria-label=\"Mark as done\"]').click()")
+        wait_for("return document.querySelectorAll('[aria-label=\"Edit task\"]').length === 2", 'Completed task remains in planned Todo view')
+        with sqlite3.connect(database) as connection:
+            rows=connection.execute('SELECT title,target_version,status FROM tasks ORDER BY title').fetchall()
+            assert rows==[('Alpha stage','0.1.0-alpha.1','Done'),('Later release','1.10','Todo'),('Sooner release','1.0','Todo')], f'Task versions were not persisted: {rows}'
+        (artifacts / 'planned-work.png').write_bytes(base64.b64decode(request(session + '/screenshot')))
+        evaluate("document.querySelector('a[href=\"/all-tasks\"]').click()")
+        wait_for("return !!document.querySelector('[aria-label=\"Sort all tasks\"]') && document.querySelectorAll('.task-version-badge').length === 2", 'Global task versions did not load')
+        evaluate("const e=document.querySelector('[aria-label=\"Sort all tasks\"]');e.value='version';e.dispatchEvent(new Event('change',{bubbles:true}))")
+        wait_for("return [...document.querySelectorAll('.task-version-badge')].map(e=>e.innerText).join('|') === 'v1.0|v1.10'", 'Global task version sorting failed')
+        print('PASS: planned work, task creation/editing/version persistence, numeric/prerelease sorting, version filter, Done exclusion')
         print('PASS: standalone startup, project creation, repository files/README/tables, refreshed previews, nested folders, local commit evidence, feature/function filters')
 
         if os.environ.get('DEVTRACK_LIVE_GITHUB'):
@@ -197,7 +245,7 @@ with (artifacts / 'driver.log').open('w') as log:
                     print(f'SKIP unavailable project: {name}')
                     continue
                 args=json.dumps({'name':f'Live check {original_id}','path':path})
-                evaluate(f"window.__live=null;window.__TAURI_INTERNALS__.invoke('project_create',{args}).then(p=>window.__TAURI_INTERNALS__.invoke('project_history',{{id:p.id,refresh:true}})).then(h=>window.__live=h).catch(e=>window.__live={{error:String(e)}})")
+                evaluate(f"window.__live=null;window.__TAURI_INTERNALS__.invoke('project_create',{args}).then(p=>{{window.__liveProjectId=p.id;return window.__TAURI_INTERNALS__.invoke('project_history',{{id:p.id,refresh:true}})}}).then(h=>window.__live=h).catch(e=>window.__live={{error:String(e)}})")
                 for attempt in range(240):
                     value=evaluate('return window.__live')
                     if value is not None: break
@@ -208,6 +256,15 @@ with (artifacts / 'driver.log').open('w') as log:
                     continue
                 (artifacts / f'github-project-{original_id}.json').write_text(json.dumps(value))
                 print(f'GITHUB {name}: {len(value["commits"])} commits; {sum(c["category"] in ["Feature","Bug fix","Function added","Performance"] for c in value["commits"])} feature/fix/function changes')
+                evaluate("window.__issueImport=null;window.__TAURI_INTERNALS__.invoke('project_issues',{id:window.__liveProjectId,refresh:true}).then(h=>window.__issueImport=h).catch(e=>window.__issueImport={error:String(e)})")
+                for attempt in range(160):
+                    issues=evaluate('return window.__issueImport')
+                    if issues is not None: break
+                    time.sleep(.25)
+                assert issues and not issues.get('error'), f'Issue import failed for {name}: {issues}'
+                (artifacts / f'issues-project-{original_id}.json').write_text(json.dumps(issues))
+                print(f'ISSUES {name}: {len(issues["issues"])} open GitHub issues')
+
     finally:
         if session:
             try:

@@ -28,6 +28,10 @@ export interface GitInfo {
 }
 
 export interface Task {
+  github_url?: string;
+  github_number?: number;
+  github_milestone?: string | null;
+  target_version?: string;
   id: number;
   project_id: number;
   project_name?: string;
@@ -128,6 +132,7 @@ export interface UpdateProjectRequest {
 }
 
 export interface CreateTaskRequest {
+  target_version?: string;
   title: string;
   description?: string;
   status?: string;
@@ -140,6 +145,7 @@ export interface CreateTaskRequest {
 }
 
 export interface UpdateTaskRequest {
+  target_version?: string;
   title?: string;
   description?: string;
   status?: string;

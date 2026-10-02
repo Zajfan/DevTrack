@@ -157,17 +157,17 @@ pub async fn task_get(state: State<'_, AppState>, id: i64) -> Result<Task, Strin
 }
 
 #[tauri::command]
-pub async fn task_create(state: State<'_, AppState>, project_id: i64, title: String, description: Option<String>, priority: Option<String>, due_date: Option<String>) -> Result<Task, String> {
+pub async fn task_create(state: State<'_, AppState>, project_id: i64, title: String, description: Option<String>, priority: Option<String>, due_date: Option<String>, target_version: Option<String>) -> Result<Task, String> {
     let conn = state.db.lock().unwrap();
     let priority = priority.unwrap_or_else(|| "Medium".to_string());
-    let id = queries::create_task(&conn, project_id, &title, description.as_deref(), Some(&priority), due_date.as_deref()).map_err(|e| e.to_string())?;
+    let id = queries::create_task_versioned(&conn, project_id, &title, description.as_deref(), Some(&priority), due_date.as_deref(), target_version.as_deref()).map_err(|e| e.to_string())?;
     queries::get_task_by_id(&conn, id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn task_update(state: State<'_, AppState>, id: i64, title: Option<String>, description: Option<String>, status: Option<String>, priority: Option<String>, due_date: Option<String>) -> Result<(), String> {
+pub async fn task_update(state: State<'_, AppState>, id: i64, title: Option<String>, description: Option<String>, status: Option<String>, priority: Option<String>, due_date: Option<String>, target_version: Option<String>) -> Result<(), String> {
     let conn = state.db.lock().unwrap();
-    queries::update_task(&conn, id, title.as_deref(), description.as_deref(), status.as_deref(), priority.as_deref(), due_date.as_deref()).map_err(|e| e.to_string())
+    queries::update_task_versioned(&conn, id, title.as_deref(), description.as_deref(), status.as_deref(), priority.as_deref(), due_date.as_deref(), target_version.as_deref()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

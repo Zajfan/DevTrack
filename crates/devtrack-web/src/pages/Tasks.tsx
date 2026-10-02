@@ -1,6 +1,9 @@
+import { invoke } from '@tauri-apps/api/core';
+import { useProjectIssues, useSyncProjectIssues } from '../hooks/useRepository';
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useSubtasks, useCreateSubtask, useUpdateSubtask, useDeleteSubtask, useProjects, useTaskTimeEntries, useTaskTotalTime, useActiveTimer, useStartTimer, useStopTimer, useTimerPause, useTimerResume, useTimeEntryDelete } from '@hooks/useApi';
 import { useAppStore } from '@store/appStore';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
+import { compareVersions, compareCreatedNewest } from '../utils/versions';
 import { cn, getPriorityColor, getStatusColor, formatDuration, formatTimestamp } from '@utils/helpers';
 import {
   Plus,
@@ -19,7 +22,7 @@ import {
 } from 'lucide-react';
 import type { Task } from '../types';
 
-export function Tasks() {
+export function Tasks({ embedded = false }: { embedded?: boolean }) {
   const { selectedProjectId, setSelectedProject } = useAppStore();
   const { data: projects } = useProjects(false);
   const { data: tasks, isLoading } = useTasks(selectedProjectId);
@@ -32,11 +35,17 @@ export function Tasks() {
   const [newTaskDescription, setNewTaskDescription] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState('Medium');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
+  const [newTaskVersion, setNewTaskVersion] = useState('');
+  const [versionFilter, setVersionFilter] = useState('all');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'Todo' | 'Done'>('all');
-  const [sortBy, setSortBy] = useState<'created' | 'priority' | 'due'>('created');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Todo' | 'Done'>(embedded ? 'Todo' : 'all');
+  const [sortBy, setSortBy] = useState<'created' | 'priority' | 'due' | 'version'>(embedded ? 'version' : 'created');
 
+  const issueQuery = useProjectIssues(selectedProjectId, embedded);
+  const syncIssues = useSyncProjectIssues(selectedProjectId);
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const combinedTasks: Task[] = [...(tasks ?? []), ...(embedded ? (issueQuery.data?.issues ?? []).map(issue => ({ id: -issue.number, project_id: selectedProjectId!, title: issue.title, description: issue.description, status: 'Todo', priority: 'Medium', target_version: issue.target_version, created_at: issue.created_at, github_url: issue.url, github_number: issue.number, github_milestone: issue.milestone })) : [])];
   const selectedProject = projects?.find((p) => p.id === selectedProjectId);
 
   const sortVal = (t: Task) => {
@@ -50,16 +59,18 @@ export function Tasks() {
     return t.id; // created (id order)
   };
 
-  const visibleTasks = (tasks ?? [])
+  const visibleTasks = combinedTasks
+    .filter(t => sourceFilter === 'all' || (sourceFilter === 'github' ? !!t.github_url : !t.github_url))
     .filter((t) => statusFilter === 'all' || t.status === statusFilter)
-    .sort((a, b) => sortVal(a) - sortVal(b));
+    .filter((t) => versionFilter === 'all' || (t.target_version || '') === versionFilter)
+    .sort((a, b) => sortBy === 'version' ? compareVersions(a.target_version || '', b.target_version || '') || (a.target_version || '').localeCompare(b.target_version || '') || a.id - b.id : sortBy === 'created' ? compareCreatedNewest(a,b) : sortVal(a) - sortVal(b));
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim() || !selectedProjectId) return;
     setSaveError(null);
     createTask.mutate(
-      { projectId: selectedProjectId, data: { title: newTaskTitle.trim(), description: newTaskDescription, priority: newTaskPriority, due_date: newTaskDueDate || undefined } },
+      { projectId: selectedProjectId, data: { title: newTaskTitle.trim(), description: newTaskDescription, priority: newTaskPriority, due_date: newTaskDueDate || undefined, target_version: newTaskVersion.trim() } },
       {
         onSuccess: () => {
           setShowCreateModal(false);
@@ -67,6 +78,7 @@ export function Tasks() {
           setNewTaskDescription('');
           setNewTaskPriority('Medium');
           setNewTaskDueDate('');
+          setNewTaskVersion('');
         },
         onError: (error) => setSaveError(`Could not create task: ${String(error)}`),
       }
@@ -85,6 +97,7 @@ export function Tasks() {
           description: editingTask.description ?? '',
           priority: editingTask.priority,
           due_date: editingTask.due_date || undefined,
+          target_version: editingTask.target_version || '',
         },
       },
       {
@@ -135,9 +148,9 @@ export function Tasks() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tasks</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{embedded ? 'Planned work' : 'Tasks'}</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
-            {selectedProject.name}
+            {embedded ? 'What’s left to build, grouped by target release.' : selectedProject.name}
             {selectedProject.git && <span className="ml-2 font-mono text-xs">[{selectedProject.git.branch}]</span>}
           </p>
         </div>
@@ -146,14 +159,19 @@ export function Tasks() {
         </button>
       </div>
 
+      {embedded && <div className="space-y-3">
+        <div className="flex items-center gap-3 flex-wrap"><button className="secondary-button" disabled={syncIssues.isPending || issueQuery.isFetching} onClick={() => syncIssues.mutate(1)}>{syncIssues.isPending || issueQuery.isFetching ? 'Loading issues…' : 'Sync GitHub issues'}</button><select aria-label="Filter task source" className="task-version-select" value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}><option value="all">Local & GitHub</option><option value="local">Local tasks</option><option value="github">GitHub issues</option></select></div>
+        {(issueQuery.error || syncIssues.error || issueQuery.data?.notice) && <p className="repo-notice" role={issueQuery.error || syncIssues.error ? 'alert' : 'status'}>{String(syncIssues.error ?? issueQuery.error ?? issueQuery.data?.notice)}</p>}
+        {issueQuery.data?.has_more && <button className="text-action" disabled={syncIssues.isPending} onClick={() => syncIssues.mutate(issueQuery.data!.next_page)}>Load more open issues</button>}
+      </div>}
       {/* Sort / filter toolbar */}
-      {!isLoading && tasks?.length ? (
+      {!isLoading && combinedTasks.length ? (
         <div className="flex items-center gap-3 flex-wrap text-sm">
           <span className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
             <ArrowUpDown className="w-3.5 h-3.5" /> Sort
           </span>
           <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-            {(['created', 'priority', 'due'] as const).map((s) => (
+            {(['version', 'created', 'priority', 'due'] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setSortBy(s)}
@@ -175,8 +193,12 @@ export function Tasks() {
               </button>
             ))}
           </div>
+          <select aria-label="Filter target version" value={versionFilter} onChange={e => setVersionFilter(e.target.value)} className="task-version-select">
+            <option value="all">All versions</option>
+            {[...new Set(combinedTasks.map(t => t.target_version || ''))].sort(compareVersions).map(v => <option key={v} value={v}>{v || 'Unscheduled'}</option>)}
+          </select>
           <span className="text-gray-400 dark:text-gray-500 text-xs ml-auto">
-            {visibleTasks.length} of {tasks.length}
+            {visibleTasks.length} of {combinedTasks.length}
           </span>
         </div>
       ) : null}
@@ -185,7 +207,7 @@ export function Tasks() {
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <TaskCardSkeleton key={i} />)}
         </div>
-      ) : !tasks?.length ? (
+      ) : !combinedTasks.length ? (
         <div className="text-center py-12">
           <CheckSquare className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No tasks yet</h2>
@@ -196,7 +218,10 @@ export function Tasks() {
         </div>
       ) : (
         <div className="space-y-3">
-          {visibleTasks.map((task) => (
+          {!visibleTasks.length && <p className="repo-notice">No tasks match these filters.</p>}
+          {visibleTasks.map((task, index) => (
+            <Fragment key={task.id}>
+            {sortBy === 'version' && (index === 0 || visibleTasks[index - 1].target_version !== task.target_version) && <h2 className="task-version-heading">{task.target_version ? `Version ${task.target_version}` : 'Unscheduled'}<small>{visibleTasks.filter(t => t.target_version === task.target_version && t.status !== 'Done').length} remaining</small></h2>}
             <TaskCard
               key={task.id}
               task={task}
@@ -204,6 +229,7 @@ export function Tasks() {
               onEdit={() => { setSaveError(null); setEditingTask(task); }}
               onDelete={() => handleDelete(task.id)}
             />
+            </Fragment>
           ))}
         </div>
       )}
@@ -240,6 +266,11 @@ export function Tasks() {
                   className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                   placeholder="Task description"
                 />
+              </div>
+              <div>
+                <label htmlFor="task-version" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target version</label>
+                <input id="task-version" type="text" maxLength={100} value={editingTask ? editingTask.target_version || '' : newTaskVersion} onChange={e => editingTask ? setEditingTask({ ...editingTask, target_version: e.target.value }) : setNewTaskVersion(e.target.value)} placeholder="1.0, 0.1.0, or 0.1.0-alpha.1" className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white" />
+                <p className="text-xs text-gray-500 mt-1">Leave empty for unscheduled work.</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -296,6 +327,7 @@ function TaskCardSkeleton() {
 
 function TaskCard({ task, onToggle, onEdit, onDelete }: { task: Task; onToggle: () => void; onEdit: () => void; onDelete: () => void }) {
   const [expanded, setExpanded] = useState(false);
+  const [issueLinkError, setIssueLinkError] = useState<string | null>(null);
   const { data: subtasks } = useSubtasks(expanded ? task.id : null);
   const { data: timeEntries } = useTaskTimeEntries(expanded ? task.id : null);
   const { data: totalTime } = useTaskTotalTime(expanded ? task.id : null);
@@ -321,6 +353,7 @@ function TaskCard({ task, onToggle, onEdit, onDelete }: { task: Task; onToggle: 
     }
   };
 
+  if (task.github_url) return <div className="native-pane p-4 github-issue-row"><div className="flex justify-between gap-3"><div><h3 className="font-medium">{task.title}{task.target_version && <span className="task-version-badge">v{task.target_version}</span>}</h3><p className="text-xs text-gray-500 mt-2">GitHub issue #{task.github_number}{task.github_milestone && ` · ${task.github_milestone}`}</p></div><button className="text-action" onClick={async () => { try { await invoke('project_documentation_link', { id: task.project_id, url: task.github_url }); setIssueLinkError(null); } catch(e) { setIssueLinkError(String(e)); } }}>Open issue ↗</button></div>{task.description && <p className="text-xs text-gray-500 mt-3 whitespace-pre-wrap">{task.description.slice(0, 240)}</p>}{issueLinkError && <p role="alert" className="repo-notice">{issueLinkError}</p>}</div>;
   return (
     <div className={cn('native-pane p-4 transition-colors', task.status === 'Done' && 'opacity-60')}>
       <div className="flex items-start gap-4">
@@ -338,6 +371,7 @@ function TaskCard({ task, onToggle, onEdit, onDelete }: { task: Task; onToggle: 
               onClick={() => setExpanded(!expanded)}
             >
               {task.title}
+              {task.target_version && <span className="task-version-badge">v{task.target_version}</span>}
             </h3>
             <div className="flex items-center gap-1 flex-shrink-0">
               <button

@@ -15,6 +15,7 @@ import { useProject, useProjectStats } from "@hooks/useApi";
 import { api } from "@api/client";
 import { useAppStore } from "@store/appStore";
 import { formatDuration } from "@utils/helpers";
+import { Tasks } from "./Tasks";
 import { ProjectFiles } from "../components/ProjectFiles";
 import { ProjectWork } from "../components/ProjectWork";
 import { openProjectGitHub } from "../hooks/useRepository";
@@ -26,7 +27,7 @@ export function ProjectDetail() {
   const { data: project, isLoading, error } = useProject(validId ? id : null);
   const { data: stats } = useProjectStats(validId ? id : 0);
   const [params, setParams] = useSearchParams();
-  const tab = params.get("tab") === "work" ? "work" : "files";
+  const tab = params.get("tab") === "work" ? "work" : params.get("tab") === "planned" ? "planned" : "files";
   const [actionError, setActionError] = useState<string | null>(null);
   const navigate = useNavigate();
   const select = useAppStore((state) => state.setSelectedProject);
@@ -132,8 +133,9 @@ export function ProjectDetail() {
               <CheckSquare size={16} />
               Completed work
             </button>
+            <button aria-current={tab === "planned" ? "page" : undefined} className={tab === "planned" ? "active" : ""} onClick={() => { const next = new URLSearchParams(params); next.set("tab", "planned"); setParams(next); }}><CheckSquare size={16} />Planned work</button>
           </nav>
-          {tab === "files" ? <ProjectFiles id={id} /> : <ProjectWork id={id} />}
+          {tab === "files" ? <ProjectFiles id={id} /> : tab === "work" ? <ProjectWork id={id} /> : <Tasks embedded />}
         </div>
         <aside className="project-about">
           <h2>About this project</h2>

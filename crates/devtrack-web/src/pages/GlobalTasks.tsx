@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { compareVersions } from '../utils/versions';
 import { useGlobalTasks, useUpdateTask, useStartTimer, useStopTimer, useActiveTimer } from '@hooks/useApi';
 import { useAppStore } from '@store/appStore';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +16,7 @@ import {
 import type { Task } from '../types';
 
 export function GlobalTasks() {
+  const [sort, setSort] = useState('priority');
   const { data: tasks, isLoading, error } = useGlobalTasks();
   const updateTask = useUpdateTask();
   const startTimer = useStartTimer();
@@ -37,7 +40,7 @@ export function GlobalTasks() {
     navigate('/tasks');
   };
 
-  const todo = tasks?.filter((t) => t.status === 'Todo') ?? [];
+  const todo = tasks?.filter((t) => t.status === 'Todo').sort((a,b) => sort === 'version' ? compareVersions(a.target_version || '',b.target_version || '') || a.project_id - b.project_id : ({High:0,Medium:1,Low:2}[a.priority] ?? 3) - ({High:0,Medium:1,Low:2}[b.priority] ?? 3)) ?? [];
   const done = tasks?.filter((t) => t.status === 'Done') ?? [];
 
   return (
@@ -45,9 +48,11 @@ export function GlobalTasks() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">All Tasks</h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          Every open task across all projects, sorted by priority
+          Every open task across all projects
         </p>
       </div>
+
+      <select aria-label="Sort all tasks" className="task-version-select" value={sort} onChange={e => setSort(e.target.value)}><option value="priority">Priority</option><option value="version">Target version</option></select>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -95,6 +100,7 @@ export function GlobalTasks() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-gray-900 dark:text-white truncate">{task.title}</p>
+                      {task.target_version && <span className="task-version-badge">v{task.target_version}</span>}
                       {overdue && (
                         <span className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 font-medium flex-shrink-0">
                           <Calendar className="w-3 h-3" />

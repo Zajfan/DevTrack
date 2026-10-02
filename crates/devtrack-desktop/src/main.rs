@@ -145,6 +145,7 @@ fn main() {
             project_repository::project_directory,
             project_repository::project_file,
             project_repository::project_history,
+            project_repository::project_issues,
             project_repository::project_github_open,
             project_repository::project_documentation_link,
             commands::projects_list,

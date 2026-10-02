@@ -26,9 +26,14 @@ Most PM tools are built for teams, servers, and browsers. DevTrack is built for 
 - Live Git status: branch, `↑ahead ↓behind`, stash count, dirty indicator
 - Open in file explorer or terminal, native directory picker
 - Per-project Markdown notes, stored locally
+- Open a project to browse local files with its README underneath
+- Completed-work history from GitHub, with feature/function filters and local Git fallback
 
 ### Tasks
 - Tasks with priority (High/Medium/Low), due dates, and descriptions
+- Planned-work tab combining local tasks and open GitHub issues, with source/Todo/Done filters and numeric version grouping
+- GitHub milestones supply issue target versions; GitHub issues stay read-only and link to the original
+- Target versions support `1.0`, `0.1.0`, and prereleases such as `0.1.0-alpha.1`; existing tasks remain unscheduled
 - **Sub-tasks** with progress counters
 - Global todo view across all projects, sorted by priority
 - Create, edit, toggle, delete — from the UI or the CLI
@@ -48,6 +53,8 @@ Most PM tools are built for teams, servers, and browsers. DevTrack is built for 
 ### CLI + REST API
 - Full-featured CLI for terminal workflows
 - REST API for scripts, web, and mobile clients
+
+GitHub history synchronization uses the optional [GitHub CLI](https://cli.github.com/). Install `gh` and run `gh auth login`; file browsing and local Git history work offline without it.
 
 ## Architecture
 
