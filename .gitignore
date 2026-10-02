@@ -31,7 +31,9 @@ Makefile
 
 # Node modules and npm
 node_modules/
-package-lock.json
+# Release dependencies must be reproducible.
+/frontend/package-lock.json
+/crates/devtrack-web/package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -82,3 +84,6 @@ docs/_build/
 
 # Stale Tauri scaffold (removed)
 src-tauri/
+
+# Temporary validation bytecode
+__pycache__/

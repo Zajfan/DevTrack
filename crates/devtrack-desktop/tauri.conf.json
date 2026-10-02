@@ -1,9 +1,9 @@
 {
   "productName": "DevTrack",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "identifier": "com.devtrack.app",
   "build": {
-    "frontendDist": "frontend/dist",
+    "frontendDist": "../devtrack-web/dist",
     "devUrl": "http://localhost:3000",
     "beforeDevCommand": {
       "script": "npm run dev",
@@ -38,7 +38,11 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "deb",
+      "rpm",
+      "appimage"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -56,14 +60,12 @@
       "appimage": {
         "bundleMediaFramework": true
       }
-    }
+    },
+    "shortDescription": "Local-first project tracking with Git history, tasks, notes, and time tracking",
+    "category": "DeveloperTool",
+    "publisher": "Zajfan",
+    "license": "MIT",
+    "homepage": "https://github.com/Zajfan/DevTrack"
   },
-  "plugins": {
-    "updater": {
-      "active": true,
-      "endpoints": ["https://github.com/The-No-hands-Company/DevTrack/releases/latest/download/latest.json"],
-      "dialog": true,
-      "pubkey": "INSERT_PUBLIC_KEY_HERE"
-    }
-  }
+  "plugins": {}
 }

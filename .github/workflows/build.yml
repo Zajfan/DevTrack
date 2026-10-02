@@ -1,31 +1,32 @@
-name: Build & Release
+name: Verify
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+  pull_request:
   workflow_dispatch:
-
+permissions:
+  contents: read
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+  verify:
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - name: Install deps
+          node-version: '24'
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Linux build dependencies
         run: |
-          cd crates/devtrack-web && npm ci
-          cd ../devtrack-desktop && cargo build --release
-      - name: Build Tauri
-        run: cargo tauri build --release --manifest-path crates/devtrack-desktop/Cargo.toml
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: devtrack-${{ matrix.os }}
-          path: |
-            crates/devtrack-desktop/target/release/bundle/**/*
-            crates/devtrack-desktop/target/release/devtrack*
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev
+      - run: npm ci
+      - run: npm test --workspace devtrack-web
+      - run: npm run build --workspace devtrack-web
+      - run: cargo check --workspace --locked
+      - name: Core and desktop tests with isolated data
+        run: |
+          export XDG_DATA_HOME="$RUNNER_TEMP/devtrack-data"
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/devtrack-config"
+          cargo test -p devtrack-core -p devtrack-desktop --locked

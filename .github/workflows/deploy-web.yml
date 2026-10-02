@@ -1,16 +1,22 @@
-name: Deploy Web
+# This frontend invokes Tauri IPC and cannot run as a standalone GitHub Pages app.
+# Keep web builds available for validation, without publishing a broken app.
+name: Web Build
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
-      - run: cd crates/devtrack-web && npm ci && npm run build
-      - uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./crates/devtrack-web/dist
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace devtrack-web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-validation
+          path: crates/devtrack-web/dist
