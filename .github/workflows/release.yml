@@ -126,13 +126,13 @@ jobs:
         include:
           - runner: windows-2022
             platform: windows
-            asset: '*_windows_x64.msi'
+            asset_suffix: _windows_x64.msi
           - runner: macos-15
             platform: macos
-            asset: '*_darwin_aarch64.dmg'
+            asset_suffix: _darwin_aarch64.dmg
           - runner: macos-15-intel
             platform: macos
-            asset: '*_darwin_x64.dmg'
+            asset_suffix: _darwin_x64.dmg
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
@@ -143,10 +143,17 @@ jobs:
       - name: Download release package
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ needs.draft.outputs.tag }}
-          ASSET_PATTERN: DevTrack${{ matrix.asset }}
+          RELEASE_ID: ${{ needs.draft.outputs.release_id }}
+          ASSET_SUFFIX: ${{ matrix.asset_suffix }}
         shell: bash
-        run: gh release download "$RELEASE_TAG" --pattern "$ASSET_PATTERN" --dir package
+        run: |
+          mkdir -p package
+          asset=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" --jq ".assets[] | select(.name | endswith(\"$ASSET_SUFFIX\")) | [.id, .name] | @tsv" | head -n 1)
+          test -n "$asset"
+          asset_id=${asset%%$'\t'*}
+          asset_name=${asset#*$'\t'}
+          gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" > "package/$asset_name"
+          test -s "package/$asset_name"
       - name: Install and launch Windows package
         if: matrix.platform == 'windows'
         shell: pwsh
