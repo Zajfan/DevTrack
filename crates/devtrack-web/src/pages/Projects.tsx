@@ -1,3 +1,5 @@
+import { ProjectTag } from "../components/ProjectTag";
+import { projectTags, hasProjectTag } from "../utils/tags";
 import {
   useProjects,
   useCreateProject,
@@ -8,7 +10,7 @@ import {
 import { CheckSquare, Clock } from "lucide-react";
 import { api } from "@api/client";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { isTauri } from "@tauri-apps/api/core";
 import { cn, formatDuration } from "@utils/helpers";
 import { selectProjectDirectory } from "../components/NativeDialogs";
@@ -29,8 +31,9 @@ import type { Project } from "../types";
 
 export function Projects() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { data: projects, isLoading, error } = useProjects(false);
-  const { data: archivedProjects } = useProjects(true);
+  const { data: archivedProjects, isLoading: archivedLoading, error: archivedError } = useProjects(true);
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
@@ -39,6 +42,7 @@ export function Projects() {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
+  const selectedTag = searchParams.get("tag")?.trim() ?? "";
   const [pickingDirectory, setPickingDirectory] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
@@ -56,6 +60,11 @@ export function Projects() {
     status: string | null;
   } | null>(null);
   const [filter, setFilter] = useState<"all" | "active" | "archived">("all");
+
+  useEffect(() => {
+    setSearch("");
+    setFilter("all");
+  }, [selectedTag, location.key]);
 
   const handleAddProject = () => {
     setDirectoryError(null);
@@ -151,8 +160,9 @@ export function Projects() {
   };
 
   const displayedProjects = (
-    filter === "archived" ? (archivedProjects ?? []) : (projects ?? [])
+    selectedTag || filter === "archived" ? (archivedProjects ?? []) : (projects ?? [])
   )
+    .filter((project) => !selectedTag || hasProjectTag(project.tags, selectedTag))
     .filter((project) => filter !== "active" || project.status === "Active")
     .filter((project) => filter !== "archived" || project.status === "Archived")
     .filter((project) =>
@@ -160,6 +170,9 @@ export function Projects() {
         .toLowerCase()
         .includes(search.toLowerCase()),
     );
+
+  const listLoading = selectedTag || filter === "archived" ? archivedLoading : isLoading;
+  const listError = selectedTag || filter === "archived" ? archivedError : error;
 
   return (
     <div className="space-y-6 projects-page">
@@ -179,6 +192,7 @@ export function Projects() {
         </button>
       </div>
 
+      {selectedTag && <div className="project-tag-filter" role="status"><span>Projects tagged <strong>{selectedTag}</strong></span><button className="text-action" aria-label="Clear tag filter" onClick={() => { const next = new URLSearchParams(searchParams); next.delete("tag"); setSearchParams(next); }}>Clear filter ×</button></div>}
       {/* Filters */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-md">
@@ -210,14 +224,14 @@ export function Projects() {
         </div>
       </div>
 
-      {error && (
+      {listError && (
         <p role="alert" className="text-sm text-red-600">
-          Could not load projects: {String(error)}
+          Could not load projects: {String(listError)}
         </p>
       )}
       {/* Projects Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {isLoading ? (
+        {listLoading ? (
           Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
@@ -234,7 +248,7 @@ export function Projects() {
               No projects found
             </h3>
             <p className="text-gray-500 dark:text-gray-400">
-              {search || filter !== "all"
+              {selectedTag || search || filter !== "all"
                 ? "Try another search or filter."
                 : "Add a local folder to start tracking your work."}
             </p>
@@ -688,14 +702,7 @@ function ProjectCard({
       {/* Tags */}
       {project.tags && (
         <div className="mb-4 flex flex-wrap gap-1">
-          {project.tags.split(",").map((tag) => (
-            <span
-              key={tag.trim()}
-              className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full"
-            >
-              {tag.trim()}
-            </span>
-          ))}
+          {projectTags(project.tags).map(tag => <ProjectTag key={tag.toLowerCase()} tag={tag} />)}
         </div>
       )}
 

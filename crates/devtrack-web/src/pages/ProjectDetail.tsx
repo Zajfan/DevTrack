@@ -1,3 +1,5 @@
+import { ProjectTag } from "../components/ProjectTag";
+import { projectTags } from "../utils/tags";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
@@ -165,12 +167,7 @@ export function ProjectDetail() {
           </div>
           {project.tags && (
             <div className="about-tags">
-              {project.tags
-                .split(",")
-                .filter(Boolean)
-                .map((tag) => (
-                  <span key={tag}>{tag.trim()}</span>
-                ))}
+              {projectTags(project.tags).map(tag => <ProjectTag key={tag.toLowerCase()} tag={tag} />)}
             </div>
           )}
           <button className="about-link" onClick={() => navigate("/tasks")}>

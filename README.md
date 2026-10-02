@@ -22,7 +22,7 @@ Most PM tools are built for teams, servers, and browsers. DevTrack is built for 
 ### Projects
 - Register projects by path or **auto-discover** them (`.git`, `Cargo.toml`, `package.json`, `go.mod`)
 - Status lifecycle: Active → Paused → Archived
-- Tags for filtering (`@tag` search)
+- Clickable tags show all projects with that tag, including archived projects
 - Live Git status: branch, `↑ahead ↓behind`, stash count, dirty indicator
 - Open in file explorer or terminal, native directory picker
 - Per-project Markdown notes, stored locally

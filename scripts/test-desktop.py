@@ -233,6 +233,27 @@ with (artifacts / 'driver.log').open('w') as log:
         wait_for("return !!document.querySelector('[aria-label=\"Sort all tasks\"]') && document.querySelectorAll('.task-version-badge').length === 2", 'Global task versions did not load')
         evaluate("const e=document.querySelector('[aria-label=\"Sort all tasks\"]');e.value='version';e.dispatchEvent(new Event('change',{bubbles:true}))")
         wait_for("return [...document.querySelectorAll('.task-version-badge')].map(e=>e.innerText).join('|') === 'v1.0|v1.10'", 'Global task version sorting failed')
+        with sqlite3.connect(database) as connection:
+            original_project_id=connection.execute("SELECT id FROM projects WHERE name='Desktop test project'").fetchone()[0]
+        tag_fixture=json.dumps({'id':original_project_id,'tags':'shared tag, C++ & tools/#'})
+        same_path=json.dumps(str(project_dir))
+        evaluate(f"window.__tagsReady=null;(async()=>{{const invoke=window.__TAURI_INTERNALS__.invoke;await invoke('project_update',{tag_fixture});const match=await invoke('project_create',{{name:'Matching archived project',path:{same_path}}});await invoke('project_update',{{id:match.id,tags:'shared tag',status:'Archived'}});const other=await invoke('project_create',{{name:'Partial tag project',path:{same_path}}});await invoke('project_update',{{id:other.id,tags:'shared tagline'}});window.__tagsReady=true}})().catch(e=>window.__tagsReady=String(e))")
+        wait_for("return window.__tagsReady === true", 'Tag fixtures failed')
+        evaluate(f"location.pathname='/projects/{original_project_id}'")
+        wait_for("return document.querySelectorAll('.about-tags .project-tag').length === 2", 'Project detail tags did not render')
+        evaluate("[...document.querySelectorAll('.about-tags .project-tag')].find(a=>a.innerText==='shared tag').click()")
+        wait_for("return location.pathname==='/projects' && document.querySelectorAll('.project-name').length === 2", 'Clickable tag did not include all matching projects')
+        assert evaluate("return [...document.querySelectorAll('.project-name')].map(e=>e.innerText).sort().join('|')")=='Desktop test project|Matching archived project', 'Tag filter used partial matches or excluded archived projects'
+        fill('[aria-label="Filter projects"]','Desktop')
+        wait_for("return document.querySelectorAll('.project-name').length === 1", 'Search within tagged projects failed')
+        evaluate("[...document.querySelectorAll('.project-tag')].find(a=>a.innerText==='shared tag').click()")
+        wait_for("return document.querySelectorAll('.project-name').length === 2 && document.querySelector('[aria-label=\"Filter projects\"]').value === ''", 'Clicking the selected tag did not restore all matching projects')
+        evaluate("document.querySelector('[aria-label=\"Clear tag filter\"]').click()")
+        wait_for("return !new URLSearchParams(location.search).has('tag') && document.querySelectorAll('.project-name').length === 2", 'Clear tag filter failed')
+        evaluate("[...document.querySelectorAll('.project-tag')].find(a=>a.innerText==='C++ & tools/#').click()")
+        wait_for("return new URLSearchParams(location.search).get('tag')==='C++ & tools/#' && document.querySelectorAll('.project-name').length === 1", 'Card tag link did not encode reserved characters')
+        (artifacts / 'tag-filter.png').write_bytes(base64.b64decode(request(session + '/screenshot')))
+        print('PASS: clickable detail/card tags, exact matching, archived matches, clear filter, URL encoding')
         print('PASS: planned work, task creation/editing/version persistence, numeric/prerelease sorting, version filter, Done exclusion')
         print('PASS: standalone startup, project creation, repository files/README/tables, refreshed previews, nested folders, local commit evidence, feature/function filters')
 
