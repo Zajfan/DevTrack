@@ -29,6 +29,7 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         webView = new WebView(this);
+        webView.setBackgroundColor(android.graphics.Color.rgb(17, 24, 39));
         webView.setTag("devtrack-webview");
         setContentView(webView);
         WebSettings settings = webView.getSettings();

@@ -17,7 +17,14 @@ async function addTask(page: Page, title:string, version:string) {
 }
 
 test('phone workflow persists projects, alpha tasks and notes; tags match exactly',async({page})=>{
+  await page.emulateMedia({colorScheme:'light'});
   await page.goto('/companion.html');
+  await expect(page.locator('html')).toHaveCSS('color-scheme','dark');
+  await expect(page.locator('.companion-shell')).toHaveCSS('background-color','rgb(17, 24, 39)');
+  await page.getByRole('button',{name:'Add project',exact:true}).click();
+  await expect(page.getByRole('dialog')).toHaveCSS('background-color','rgb(23, 31, 50)');
+  await expect(page.getByRole('dialog').getByLabel('Project name')).toHaveCSS('background-color','rgb(17, 24, 39)');
+  await page.getByRole('dialog').getByRole('button',{name:'Cancel'}).click();
   await expect(page.getByText('Your projects, within reach.')).toBeVisible();
   await addProject(page,'DevTrack','Rust, TypeScript');
   await addProject(page,'Other','rust');

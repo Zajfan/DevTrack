@@ -32,6 +32,8 @@ public class CompanionSmokeTest {
         assertEquals("true", javascript("!!document.querySelector('[data-companion-ready]')"));
         assertEquals("\"https://appassets.androidplatform.net\"", javascript("location.origin"));
         assertEquals("\"function\"", javascript("typeof DevTrackAndroid.shareBackup"));
+        assertEquals("\"dark\"", javascript("getComputedStyle(document.documentElement).colorScheme"));
+        assertEquals("\"rgb(17, 24, 39)\"", javascript("getComputedStyle(document.querySelector('.companion-shell')).backgroundColor"));
         String seed = "localStorage.setItem('devtrack-companion-v1', JSON.stringify({format:'devtrack-companion',version:1,projects:[{id:'p',name:'Offline fixture',repository:'',tags:'Rust',notes:'Persistent note'}],tasks:[{id:'t',project_id:'p',title:'Alpha task',description:'Stored offline',status:'todo',priority:'normal',target_version:'0.1.0-alpha.1',updated_at:'2026-10-02T00:00:00Z'}]}));location.reload();true";
         javascript(seed);
         for (int attempt = 0; attempt < 100; attempt++) {
