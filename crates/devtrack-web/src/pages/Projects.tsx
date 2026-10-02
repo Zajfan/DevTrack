@@ -11,7 +11,8 @@ import { CheckSquare, Clock } from "lucide-react";
 import { api } from "@api/client";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { isTauri } from "@tauri-apps/api/core";
+import { isTauri, invoke } from "@tauri-apps/api/core";
+import type { WorkHistory } from "../types/repository";
 import { cn, formatDuration } from "@utils/helpers";
 import { selectProjectDirectory } from "../components/NativeDialogs";
 import {
@@ -27,6 +28,8 @@ import {
   TerminalSquare,
 } from "lucide-react";
 import { useAppStore } from "@store/appStore";
+import { useWorkspaceWork } from "../hooks/useWorkspaceWork";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Project } from "../types";
 
 export function Projects() {
@@ -38,6 +41,8 @@ export function Projects() {
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
   const { selectedProjectId, setSelectedProject } = useAppStore();
+  const work = useWorkspaceWork();
+  const queryClient = useQueryClient();
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -300,6 +305,7 @@ export function Projects() {
                 }
               }}
               isArchived={project.status === "Archived"}
+              openWorkCount={work.items.filter(item => item.status === "Todo" && item.project_ids.includes(project.id)).length}
             />
           ))
         )}
@@ -492,7 +498,14 @@ export function Projects() {
                     commitProject.id,
                     commitProject.message.trim(),
                   );
-                  setCommitProject({ ...commitProject, status: result });
+                  let status = result;
+                  try {
+                    const history = await invoke<WorkHistory>("project_history", { id: commitProject.id, refresh: true, page: 1 });
+                    queryClient.setQueryData(["project-history", commitProject.id], history);
+                  } catch {
+                    status = `${result} (history refresh failed; refresh project work to update counts)`;
+                  }
+                  setCommitProject({ ...commitProject, status });
                   setTimeout(() => setCommitProject(null), 1500);
                 } catch (error) {
                   setCommitProject({
@@ -569,6 +582,7 @@ function ProjectCard({
   onOpenPath,
   onOpenTerminal,
   isArchived,
+  openWorkCount,
 }: {
   project: Project;
   isSelected: boolean;
@@ -580,6 +594,7 @@ function ProjectCard({
   onOpenPath: () => void;
   onOpenTerminal: () => void;
   isArchived: boolean;
+  openWorkCount: number;
 }) {
   const git = project.git;
   const { data: stats } = useProjectStats(project.id);
@@ -707,11 +722,11 @@ function ProjectCard({
       )}
 
       {/* Stats */}
-      {stats && (stats.open_tasks > 0 || stats.total_seconds > 0) && (
+      {stats && (openWorkCount > 0 || stats.total_seconds > 0) && (
         <div className="mb-3 flex items-center gap-4 text-xs">
           <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
             <CheckSquare className="w-3.5 h-3.5 text-purple-500" />
-            {stats.open_tasks} open
+            {openWorkCount} open
           </span>
           <span className="flex items-center gap-1.5 font-mono text-gray-600 dark:text-gray-300">
             <Clock className="w-3.5 h-3.5 text-green-500" />

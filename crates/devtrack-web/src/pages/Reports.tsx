@@ -1,3 +1,4 @@
+import { WorkspaceWorkPanel } from '../components/WorkspaceWorkPanel';
 import { useTimeReport, useTimeEntryDelete, useTimeEntryUpdate, useTimeEntries } from '@hooks/useApi';
 import { api } from '@api/client';
 import { useState } from 'react';
@@ -60,10 +61,17 @@ export function Reports() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Time tracking analytics and insights</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Planned and completed work, alongside tracked time.</p>
         </div>
       </div>
 
+      <div className="space-y-3">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Work across projects</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Current task status and loaded commit evidence, across all dates. Work without a timer is included here.</p>
+        <WorkspaceWorkPanel readOnly />
+      </div>
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Tracked time</h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400">The period below applies to time entries only. Tasks and commits do not imply tracked hours.</p>
       {/* Period Selector */}
       <div className="flex items-center gap-4 flex-wrap">
         <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">

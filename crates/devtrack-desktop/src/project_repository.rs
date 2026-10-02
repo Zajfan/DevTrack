@@ -140,6 +140,12 @@ pub async fn project_history(
         if let Some(history) = cached.as_ref() {
             return Ok(history.clone());
         }
+        let mut local = tauri::async_runtime::spawn_blocking(move || repository::local_history(&root))
+            .await.map_err(|e| e.to_string())?;
+        if repo.is_some() {
+            local.notice = Some("Showing local Git history. Refresh GitHub to load remote commit evidence.".into());
+        }
+        return Ok(local);
     }
     let page = page.unwrap_or(1).clamp(1, 1000);
     if let Some(repo) = repo {
@@ -325,7 +331,10 @@ pub async fn project_issues(state: State<'_, AppState>, id: i64, refresh: Option
     let (repo,_,_) = tauri::async_runtime::spawn_blocking(move || repository::repository_info(&project_root)).await.map_err(|e|e.to_string())?;
     let cache_path = state.config.data_dir.join("history").join(format!("issues-{id}.json"));
     let cached = std::fs::read(&cache_path).ok().and_then(|b|serde_json::from_slice::<PlannedIssues>(&b).ok()).filter(|c|c.repository==repo);
-    if !refresh.unwrap_or(false) { if let Some(cached)=cached.as_ref() { return Ok(cached.clone()); } }
+    if !refresh.unwrap_or(false) {
+        if let Some(cached)=cached.as_ref() { return Ok(cached.clone()); }
+        return Ok(PlannedIssues { issues:vec![],repository:repo,notice:Some("No cached GitHub issues. Refresh GitHub to load open issues; local tasks remain available offline.".into()),has_more:false,next_page:1 });
+    }
     let Some(repo)=repo else { return Ok(PlannedIssues { issues:vec![],repository:None,notice:Some("No GitHub origin found. Local tasks are available below.".into()),has_more:false,next_page:1 }); };
     let page=page.unwrap_or(1).clamp(1,1000);
     let response=github(&format!("repos/{repo}/issues"),&[("state","open".into()),("per_page","100".into()),("page",page.to_string())]).await;

@@ -4,6 +4,7 @@ import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useSubtasks, use
 import { useAppStore } from '@store/appStore';
 import { Fragment, useState } from 'react';
 import { compareVersions, compareCreatedNewest } from '../utils/versions';
+import { projectPlannedWork } from '../utils/workspaceWork';
 import { cn, getPriorityColor, getStatusColor, formatDuration, formatTimestamp } from '@utils/helpers';
 import {
   Plus,
@@ -24,8 +25,8 @@ import type { Task } from '../types';
 
 export function Tasks({ embedded = false }: { embedded?: boolean }) {
   const { selectedProjectId, setSelectedProject } = useAppStore();
-  const { data: projects } = useProjects(false);
-  const { data: tasks, isLoading } = useTasks(selectedProjectId);
+  const { data: projects } = useProjects(true);
+  const { data: tasks, isLoading, error: taskError } = useTasks(selectedProjectId);
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
@@ -42,11 +43,11 @@ export function Tasks({ embedded = false }: { embedded?: boolean }) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'Todo' | 'Done'>(embedded ? 'Todo' : 'all');
   const [sortBy, setSortBy] = useState<'created' | 'priority' | 'due' | 'version'>(embedded ? 'version' : 'created');
 
-  const issueQuery = useProjectIssues(selectedProjectId, embedded);
+  const issueQuery = useProjectIssues(selectedProjectId, !!selectedProjectId);
   const syncIssues = useSyncProjectIssues(selectedProjectId);
   const [sourceFilter, setSourceFilter] = useState('all');
-  const combinedTasks: Task[] = [...(tasks ?? []), ...(embedded ? (issueQuery.data?.issues ?? []).map(issue => ({ id: -issue.number, project_id: selectedProjectId!, title: issue.title, description: issue.description, status: 'Todo', priority: 'Medium', target_version: issue.target_version, created_at: issue.created_at, github_url: issue.url, github_number: issue.number, github_milestone: issue.milestone })) : [])];
   const selectedProject = projects?.find((p) => p.id === selectedProjectId);
+  const combinedTasks = selectedProject ? projectPlannedWork(selectedProject,tasks ?? [],issueQuery.data) : [];
 
   const sortVal = (t: Task) => {
     if (sortBy === 'priority') {
@@ -159,11 +160,12 @@ export function Tasks({ embedded = false }: { embedded?: boolean }) {
         </button>
       </div>
 
-      {embedded && <div className="space-y-3">
+      <div className="space-y-3">
         <div className="flex items-center gap-3 flex-wrap"><button className="secondary-button" disabled={syncIssues.isPending || issueQuery.isFetching} onClick={() => syncIssues.mutate(1)}>{syncIssues.isPending || issueQuery.isFetching ? 'Loading issues…' : 'Sync GitHub issues'}</button><select aria-label="Filter task source" className="task-version-select" value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}><option value="all">Local & GitHub</option><option value="local">Local tasks</option><option value="github">GitHub issues</option></select></div>
         {(issueQuery.error || syncIssues.error || issueQuery.data?.notice) && <p className="repo-notice" role={issueQuery.error || syncIssues.error ? 'alert' : 'status'}>{String(syncIssues.error ?? issueQuery.error ?? issueQuery.data?.notice)}</p>}
         {issueQuery.data?.has_more && <button className="text-action" disabled={syncIssues.isPending} onClick={() => syncIssues.mutate(issueQuery.data!.next_page)}>Load more open issues</button>}
-      </div>}
+      </div>
+      {taskError && <p className="repo-notice" role="alert">Could not load local tasks: {String(taskError)}</p>}
       {/* Sort / filter toolbar */}
       {!isLoading && combinedTasks.length ? (
         <div className="flex items-center gap-3 flex-wrap text-sm">
@@ -220,7 +222,7 @@ export function Tasks({ embedded = false }: { embedded?: boolean }) {
         <div className="space-y-3">
           {!visibleTasks.length && <p className="repo-notice">No tasks match these filters.</p>}
           {visibleTasks.map((task, index) => (
-            <Fragment key={task.id}>
+            <Fragment key={task.work_key}>
             {sortBy === 'version' && (index === 0 || visibleTasks[index - 1].target_version !== task.target_version) && <h2 className="task-version-heading">{task.target_version ? `Version ${task.target_version}` : 'Unscheduled'}<small>{visibleTasks.filter(t => t.target_version === task.target_version && t.status !== 'Done').length} remaining</small></h2>}
             <TaskCard
               key={task.id}

@@ -94,11 +94,10 @@ export interface DashboardSummary {
   total_tasks: number;
   active_tasks: number;
   completed_tasks: number;
-  done_tasks: number;
   total_time_today: number;
   total_time_week: number;
   recent_projects: Project[];
-  active_timer: { task_id: number; elapsed_formatted: string } | null;
+  active_timer?: { task_id: number; elapsed_formatted: string } | null;
 }
 
 export interface CreateProjectRequest {

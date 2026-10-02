@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Overview, project cards, All Tasks and Reports now use one workspace view of local tasks, cached GitHub issues and meaningful completed commit evidence.
+- Local tasks remain available while remote work is offline; repository fetching happens on explicit refresh, with cached evidence retained.
+- Global task lists can filter and sort by source, status, project and target version, including alpha versions and commit file/function evidence.
+- Completing tasks from All Tasks updates the Overview and Reports. GitHub issues and commit evidence stay read-only.
+- Reports now show planned/completed work separately from timer-based hours, so untracked work is visible without inventing time.
+- Project open-work counts include cached GitHub issues, and Quick Commit refreshes completed history after pushing.
+
+
 ### Added
 
 **TIER 2 Features - Task Dependencies (v0.4.0)**

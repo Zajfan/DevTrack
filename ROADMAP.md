@@ -10,6 +10,8 @@ The release remains a draft until all requested platforms are ready and verified
 
 ## 1.0 — release readiness
 
+The workspace task consistency fixes are tracked as 1.0 release bugs: [#9](https://github.com/Zajfan/DevTrack/issues/9) Overview task counts, [#10](https://github.com/Zajfan/DevTrack/issues/10) All Tasks, [#11](https://github.com/Zajfan/DevTrack/issues/11) completed commit evidence, [#12](https://github.com/Zajfan/DevTrack/issues/12) consistent local and GitHub work, and [#13](https://github.com/Zajfan/DevTrack/issues/13) Reports work data. Local task versions are assigned in DevTrack; linked GitHub issues remain read-only and inherit their target version from the GitHub milestone.
+
 [Milestone 1.0](https://github.com/Zajfan/DevTrack/milestone/1)
 
 | Issue | Work |

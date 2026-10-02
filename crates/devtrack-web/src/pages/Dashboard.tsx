@@ -1,7 +1,7 @@
+import { WorkspaceWorkStatus } from '../components/WorkspaceWorkPanel';
 import {
   useDashboardSummary,
   useTimeEntries,
-  useGlobalTasks,
   useProjects,
 } from "@hooks/useApi";
 import { formatDuration, formatTimestamp } from "@utils/helpers";
@@ -19,11 +19,13 @@ import {
 } from "lucide-react";
 import { useAppStore } from "@store/appStore";
 import { useNavigate } from "react-router-dom";
+import { useWorkspaceWork } from '../hooks/useWorkspaceWork';
 
 export function Dashboard() {
   const { data: summary, isLoading, error } = useDashboardSummary();
   const { data: timeEntries } = useTimeEntries("today");
-  const { data: tasks } = useGlobalTasks();
+  const work = useWorkspaceWork();
+  const tasks = work.items;
   const { data: projects } = useProjects(false);
   const setSelectedProject = useAppStore((state) => state.setSelectedProject);
   const navigate = useNavigate();
@@ -47,14 +49,14 @@ export function Dashboard() {
       value: openTasks.length,
       detail: overdue.length
         ? `${overdue.length} overdue`
-        : "Ready for your next session",
+        : `${work.summary.localOpen} local · ${work.summary.githubOpen} GitHub`,
       icon: CheckSquare,
       path: "/all-tasks",
     },
     {
       label: "Completed",
-      value: summary?.done_tasks ?? 0,
-      detail: "Tasks finished across projects",
+      value: work.summary.completed,
+      detail: `${work.summary.localCompleted} local tasks · ${work.summary.commitCompleted} loaded meaningful commits`,
       icon: CheckSquare,
       path: "/all-tasks",
     },
@@ -86,6 +88,7 @@ export function Dashboard() {
           New Project
         </button>
       </div>
+      <WorkspaceWorkStatus work={work} />
       {error && (
         <div role="alert" className="dashboard-alert">
           <AlertCircle size={16} />
@@ -114,7 +117,7 @@ export function Dashboard() {
               {label}
               <Icon size={16} />
             </div>
-            <div className="stat-value">{isLoading ? "—" : value}</div>
+            <div className="stat-value">{label === "Open tasks" || label === "Completed" ? (work.isLoading ? "—" : value) : (isLoading ? "—" : value)}</div>
             <div className="stat-detail">{detail}</div>
           </button>
         ))}
@@ -233,11 +236,11 @@ export function Dashboard() {
           {openTasks.length ? (
             openTasks.slice(0, 5).map((task) => (
               <button
-                key={task.id}
+                key={task.work_key}
                 className="next-task"
                 onClick={() => {
                   setSelectedProject(task.project_id);
-                  navigate("/tasks");
+                  navigate(`/projects/${task.project_id}?tab=planned`);
                 }}
               >
                 <Circle size={16} />

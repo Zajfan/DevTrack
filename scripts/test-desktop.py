@@ -208,6 +208,8 @@ with (artifacts / 'driver.log').open('w') as log:
         subprocess.run(['git','-C',str(project_dir),'remote','add','origin','https://github.com/fixture/repo.git'],check=True,capture_output=True)
         evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Planned work').click()")
         wait_for("return [...document.querySelectorAll('h1')].some(h => h.innerText === 'Planned work')", 'Planned work tab failed')
+        wait_for("return [...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Sync GitHub issues' && !b.disabled)", 'Issue cache did not finish loading')
+        evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Sync GitHub issues').click()")
         wait_for("return document.querySelector('.github-issue-row')?.innerText.includes('GitHub planned feature')", 'GitHub issue did not load')
         assert not evaluate("return document.body.innerText.includes('Pull request hidden')"), 'Pull request leaked into planned issues'
         for title, version in [('Later release','1.10'), ('Alpha stage','0.1.0-alpha.1'), ('Sooner release','1.2')]:
@@ -241,9 +243,29 @@ with (artifacts / 'driver.log').open('w') as log:
             assert rows==[('Alpha stage','0.1.0-alpha.1','Done'),('Later release','1.10','Todo'),('Sooner release','1.0','Todo')], f'Task versions were not persisted: {rows}'
         snapshot('planned-work.png')
         evaluate("document.querySelector('a[href=\"/all-tasks\"]').click()")
-        wait_for("return !!document.querySelector('[aria-label=\"Sort all tasks\"]') && document.querySelectorAll('.task-version-badge').length === 2", 'Global task versions did not load')
-        evaluate("const e=document.querySelector('[aria-label=\"Sort all tasks\"]');e.value='version';e.dispatchEvent(new Event('change',{bubbles:true}))")
-        wait_for("return [...document.querySelectorAll('.task-version-badge')].map(e=>e.innerText).join('|') === 'v1.0|v1.10'", 'Global task version sorting failed')
+        wait_for("return document.querySelectorAll('[data-work-source=local]').length === 3 && document.querySelectorAll('[data-work-source=github]').length === 1 && document.querySelectorAll('[data-work-source=commit]').length === 1", 'All Tasks omitted local, GitHub or completed work')
+        assert evaluate("return !document.querySelector('[data-work-source=github] button[aria-label]') && !document.querySelector('[data-work-source=commit] button[aria-label]')"), 'Remote work exposes local mutation controls'
+        evaluate("const e=document.querySelector('[aria-label=\"Filter work status\"]');e.value='Todo';e.dispatchEvent(new Event('change',{bubbles:true}))")
+        wait_for("return [...document.querySelectorAll('.task-version-badge')].map(e=>e.innerText).join('|') === 'v0.5|v1.0|v1.10'", 'Global task version sorting failed')
+        evaluate("document.querySelector('[aria-label=\"Mark as done\"]').click()")
+        wait_for("return document.querySelectorAll('[data-work-source=local]').length === 1", 'Global completion failed')
+        evaluate("document.querySelector('a[href=\"/\"]').click()")
+        wait_for("return [...document.querySelectorAll('.overview-stat')].find(e=>e.innerText.includes('Open tasks'))?.querySelector('.stat-value').innerText === '2'", 'Overview did not combine local and GitHub open tasks')
+        wait_for("return [...document.querySelectorAll('.overview-stat')].find(e=>e.innerText.includes('Completed'))?.querySelector('.stat-value').innerText === '3'", 'Overview did not count two completed tasks plus meaningful commit')
+        assert evaluate("return document.querySelector('main').innerText.includes('GitHub planned feature')"), 'Up next omitted GitHub task'
+        snapshot('overview-work.png')
+        evaluate("document.querySelector('a[href=\"/reports\"]').click()")
+        wait_for("return document.querySelectorAll('[data-work-source]').length === 5", 'Reports empty despite local and repository work')
+        wait_for("return document.querySelector('main').innerText.includes('No time entries for this period')", 'Report invented tracked time for work')
+        assert evaluate("return !document.querySelector('[aria-label=\"Mark as done\"]')"), 'Report unexpectedly edits task state'
+        snapshot('reports-work.png')
+        evaluate("document.querySelector('a[href=\"/all-tasks\"]').click()")
+        wait_for("return document.querySelectorAll('[aria-label=\"Reopen task\"]').length === 2", 'Global completed tasks missing')
+        evaluate("document.querySelectorAll('[aria-label=\"Reopen task\"]')[1].click()")
+        wait_for("return document.querySelectorAll('[aria-label=\"Mark as done\"]').length === 2", 'Global reopen failed')
+        evaluate("location.reload()")
+        wait_for("return document.querySelectorAll('[data-work-source]').length === 5", 'Local/remote work did not persist across restart')
+        print('PASS: mixed work in All Tasks/Overview/Reports, meaningful completed counts, read-only remote rows, completion/reopen and cached reload')
         with sqlite3.connect(database) as connection:
             original_project_id=connection.execute("SELECT id FROM projects WHERE name='Desktop test project'").fetchone()[0]
         tag_fixture=json.dumps({'id':original_project_id,'tags':'shared tag, C++ & tools/#'})

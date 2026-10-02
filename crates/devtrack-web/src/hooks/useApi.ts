@@ -234,6 +234,7 @@ export const useStartTimer = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time-entries'] });
       queryClient.invalidateQueries({ queryKey: ['active-timer'] });
+      queryClient.invalidateQueries({ queryKey: ['time-report'] });
     },
   });
 };
@@ -245,6 +246,7 @@ export const useStopTimer = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time-entries'] });
       queryClient.invalidateQueries({ queryKey: ['active-timer'] });
+      queryClient.invalidateQueries({ queryKey: ['time-report'] });
     },
   });
 };
@@ -272,6 +274,8 @@ export const useImportData = () => {
     mutationFn: (path: string) => api.system.importData(path),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['project-stats'] });
       queryClient.invalidateQueries({ queryKey: ['time-entries'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     },
@@ -314,6 +318,7 @@ export const useTimerPause = () => {
     mutationFn: (taskId: number) => api.timerPause(taskId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['active-timer'] });
+      queryClient.invalidateQueries({ queryKey: ['time-report'] });
       queryClient.invalidateQueries({ queryKey: ['time-entries'] });
     },
   });
@@ -325,6 +330,7 @@ export const useTimerResume = () => {
     mutationFn: (taskId: number) => api.timerResume(taskId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['active-timer'] });
+      queryClient.invalidateQueries({ queryKey: ['time-report'] });
     },
   });
 };
