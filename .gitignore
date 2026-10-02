@@ -87,3 +87,11 @@ src-tauri/
 
 # Temporary validation bytecode
 __pycache__/
+.release-keys/
+mobile/android/.gradle/
+mobile/android/**/build/
+mobile/android/local.properties
+crates/devtrack-web/dist-companion/
+crates/devtrack-web/test-results/
+crates/devtrack-web/playwright-report/
+mobile/android/app/src/main/assets/
