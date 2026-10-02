@@ -118,3 +118,40 @@ jobs:
           cd assets
           sha256sum * > SHA256SUMS.txt
           gh release upload "$RELEASE_TAG" SHA256SUMS.txt --clobber
+  package-smoke:
+    needs: [draft, checksums]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2022
+            platform: windows
+            asset: '*_windows_x64.msi'
+          - runner: macos-15
+            platform: macos
+            asset: '*_darwin_aarch64.dmg'
+          - runner: macos-15-intel
+            platform: macos
+            asset: '*_darwin_x64.dmg'
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref_name || needs.draft.outputs.tag }}
+      - name: Download release package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.draft.outputs.tag }}
+          ASSET_PATTERN: DevTrack${{ matrix.asset }}
+        shell: bash
+        run: gh release download "$RELEASE_TAG" --pattern "$ASSET_PATTERN" --dir package
+      - name: Install and launch Windows package
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: ./scripts/smoke-windows-package.ps1 -PackageDirectory package
+      - name: Mount and launch macOS package
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: bash scripts/smoke-macos-package.sh package/*.dmg
