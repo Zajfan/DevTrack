@@ -70,7 +70,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev rpm
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev rpm squashfs-tools
       - run: npm ci
       - run: npm test --workspace devtrack-web
       - uses: tauri-apps/tauri-action@v1
@@ -87,6 +87,21 @@ jobs:
           uploadUpdaterJson: false
           uploadWorkflowArtifacts: true
           releaseAssetNamePattern: '[name]_[version]_[platform]_[arch][_setup].[ext]'
+      - name: Use system Wayland libraries in AppImage
+        if: runner.os == 'Linux'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.draft.outputs.tag }}
+        run: |
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+          image=$(find target/${{ matrix.target }}/release/bundle/appimage -name '*.AppImage' -print -quit)
+          test -n "$image"
+          python3 scripts/repair-appimage.py "$image"
+          version=$(node -p "require('./crates/devtrack-desktop/tauri.conf.json').version")
+          asset="DevTrack_${version}_linux_amd64.AppImage"
+          cp "$image" "$asset"
+          gh release upload "$RELEASE_TAG" "$asset" --clobber
   checksums:
     needs: [draft, desktop]
     runs-on: ubuntu-22.04

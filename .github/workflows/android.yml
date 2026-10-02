@@ -73,7 +73,7 @@ jobs:
           script: |
             adb shell cmd connectivity airplane-mode enable
             (cd mobile/android && gradle --no-daemon :app:connectedDebugAndroidTest)
-            adb uninstall com.devtrack.companion
+            if adb shell pm path com.devtrack.companion | grep -q '^package:'; then adb uninstall com.devtrack.companion; fi
             adb install mobile/android/app/build/outputs/apk/release/app-release.apk
             adb shell am start -W -n com.devtrack.companion/.MainActivity
       - name: Attach signed APK to draft
