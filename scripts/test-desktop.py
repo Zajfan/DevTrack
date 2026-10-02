@@ -4,6 +4,8 @@
 Run after building:
   xvfb-run -a python3 scripts/test-desktop.py target/release/devtrack-desktop
 Uses temporary app data; never opens the user's database.
+Set DEVTRACK_SKIP_SCREENSHOTS=1 when the host WebDriver cannot capture a bundled
+WebKit version. All DOM, navigation, and persistence checks still run.
 """
 import base64
 import json
@@ -25,6 +27,9 @@ fixture_bin = artifacts / 'bin'
 fixture_bin.mkdir()
 fixture_gh = fixture_bin / 'gh'
 fixture_gh.write_text("#!/usr/bin/env python3\nimport os,sys,json\nif 'repos/fixture/repo/issues' in sys.argv:\n print(json.dumps([{'number':42,'title':'GitHub planned feature','body':'Open issue from fixture','milestone':{'title':'v0.5'},'labels':[],'created_at':'2026-01-01T00:00:00Z'},{'number':43,'title':'Pull request hidden','pull_request':{}}]))\nelse:\n os.execv('/usr/bin/gh',['gh',*sys.argv[1:]])\n")
+fixture_python = fixture_bin / 'gh-fixture.py'
+fixture_python.write_text(fixture_gh.read_text())
+fixture_gh.write_text('#!/bin/sh\nunset PYTHONHOME PYTHONPATH\nexec /usr/bin/python3 \"' + str(fixture_python) + '\" \"$@\"\n')
 fixture_gh.chmod(0o755)
 env['PATH'] = str(fixture_bin) + os.pathsep + env.get('PATH','')
 for key, name in [('XDG_DATA_HOME', 'data'), ('XDG_CONFIG_HOME', 'config'), ('XDG_CACHE_HOME', 'cache')]:
@@ -51,6 +56,12 @@ def request(path, body=None, method=None):
         raise RuntimeError(error.read().decode()) from error
 
 
+def snapshot(name):
+    # A host WebDriver may not support captures from bundled WebKit versions.
+    if not os.environ.get('DEVTRACK_SKIP_SCREENSHOTS'):
+        (artifacts / name).write_bytes(base64.b64decode(request(session + '/screenshot')))
+
+
 with (artifacts / 'driver.log').open('w') as log:
     driver = subprocess.Popen(['WebKitWebDriver', f'--port={port}'], env=env, stdout=log, stderr=log)
     session = None
@@ -75,7 +86,7 @@ with (artifacts / 'driver.log').open('w') as log:
                 break
             time.sleep(0.25)
         (artifacts / 'page.txt').write_text(text)
-        (artifacts / 'screenshot.png').write_bytes(base64.b64decode(request(session + '/screenshot')))
+        snapshot('screenshot.png')
         assert 'Overview' in text and 'Recent activity' in text, 'Dashboard did not render'
         assert evaluate("return document.querySelector('main').getBoundingClientRect().left >= document.querySelector('aside').getBoundingClientRect().right"), 'Sidebar covers dashboard content'
         evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'New Project').click()")
@@ -100,7 +111,7 @@ with (artifacts / 'driver.log').open('w') as log:
                     return
                 time.sleep(0.25)
             (artifacts / 'failure-page.txt').write_text(evaluate('return document.body.innerText'))
-            (artifacts / 'failure.png').write_bytes(base64.b64decode(request(session + '/screenshot')))
+            snapshot('failure.png')
             raise AssertionError(message + ': ' + str(evaluate('return window.__testErrors')))
 
         def open_project_form():
@@ -156,7 +167,7 @@ with (artifacts / 'driver.log').open('w') as log:
         fill('#new-project-path', str(project_dir))
         evaluate("document.querySelector('form button[type=submit]').click()")
         wait_for("return !document.querySelector('#new-project-name') && [...document.querySelectorAll('h3')].some(h => h.textContent === 'Desktop test project')", 'Created project did not appear in the list')
-        (artifacts / 'project-created.png').write_bytes(base64.b64decode(request(session + '/screenshot')))
+        snapshot('project-created.png')
         evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Archived').click()")
         wait_for("return ![...document.querySelectorAll('h3')].some(h => h.textContent === 'Desktop test project')", 'Archived filter includes active projects')
         evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'All').click()")
@@ -173,7 +184,7 @@ with (artifacts / 'driver.log').open('w') as log:
         evaluate("document.querySelector('.project-name').click()")
         wait_for("return location.pathname.includes('/projects/') && !!document.querySelector('.repo-file-list')", 'Project detail did not open')
         assert evaluate("return document.querySelector('.repo-readme').innerText.includes('Sample repository') && !!document.querySelector('.repo-readme table')"), 'README or Markdown table did not render'
-        (artifacts / 'project-files.png').write_bytes(base64.b64decode(request(session + '/screenshot')))
+        snapshot('project-files.png')
         evaluate("[...document.querySelectorAll('.repo-file-row')].find(b => b.innerText.includes('timer.rs')).click()")
         wait_for("return document.querySelector('.source-preview')?.innerText.includes('pause_timer')", 'Source preview failed')
         (project_dir / 'timer.rs').write_text('pub fn pause_timer_updated() {}\n')
@@ -193,7 +204,7 @@ with (artifacts / 'driver.log').open('w') as log:
         wait_for("return document.querySelectorAll('.work-entry').length === 2", 'All changes filter failed')
         evaluate("document.querySelector('.work-expand').click()")
         wait_for("return !!document.querySelector('.work-evidence')", 'Commit evidence expansion failed')
-        (artifacts / 'project-work.png').write_bytes(base64.b64decode(request(session + '/screenshot')))
+        snapshot('project-work.png')
         subprocess.run(['git','-C',str(project_dir),'remote','add','origin','https://github.com/fixture/repo.git'],check=True,capture_output=True)
         evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Planned work').click()")
         wait_for("return [...document.querySelectorAll('h1')].some(h => h.innerText === 'Planned work')", 'Planned work tab failed')
@@ -228,7 +239,7 @@ with (artifacts / 'driver.log').open('w') as log:
         with sqlite3.connect(database) as connection:
             rows=connection.execute('SELECT title,target_version,status FROM tasks ORDER BY title').fetchall()
             assert rows==[('Alpha stage','0.1.0-alpha.1','Done'),('Later release','1.10','Todo'),('Sooner release','1.0','Todo')], f'Task versions were not persisted: {rows}'
-        (artifacts / 'planned-work.png').write_bytes(base64.b64decode(request(session + '/screenshot')))
+        snapshot('planned-work.png')
         evaluate("document.querySelector('a[href=\"/all-tasks\"]').click()")
         wait_for("return !!document.querySelector('[aria-label=\"Sort all tasks\"]') && document.querySelectorAll('.task-version-badge').length === 2", 'Global task versions did not load')
         evaluate("const e=document.querySelector('[aria-label=\"Sort all tasks\"]');e.value='version';e.dispatchEvent(new Event('change',{bubbles:true}))")
@@ -252,7 +263,7 @@ with (artifacts / 'driver.log').open('w') as log:
         wait_for("return !new URLSearchParams(location.search).has('tag') && document.querySelectorAll('.project-name').length === 2", 'Clear tag filter failed')
         evaluate("[...document.querySelectorAll('.project-tag')].find(a=>a.innerText==='C++ & tools/#').click()")
         wait_for("return new URLSearchParams(location.search).get('tag')==='C++ & tools/#' && document.querySelectorAll('.project-name').length === 1", 'Card tag link did not encode reserved characters')
-        (artifacts / 'tag-filter.png').write_bytes(base64.b64decode(request(session + '/screenshot')))
+        snapshot('tag-filter.png')
         print('PASS: clickable detail/card tags, exact matching, archived matches, clear filter, URL encoding')
         print('PASS: planned work, task creation/editing/version persistence, numeric/prerelease sorting, version filter, Done exclusion')
         print('PASS: standalone startup, project creation, repository files/README/tables, refreshed previews, nested folders, local commit evidence, feature/function filters')

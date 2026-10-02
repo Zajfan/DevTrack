@@ -16,8 +16,8 @@
 
 ## Tasks
 
-- [ ] Test portable state and import first in `crates/devtrack-web/tests/companion.test.mjs`: invalid versions rejected, malformed imports atomic, desktop export target versions retained, mobile backup round trip, GitHub pull requests excluded, added-function evidence excludes calls and removed declarations.
-- [ ] Implement state validation and GitHub normalization in `crates/devtrack-web/src/companion/model.ts` and `github.ts`. Run `npm test --workspace devtrack-web`.
-- [ ] Collect and inspect 12ui candidates; expand the selected phone layout into project detail and transfer states, integrate generated layout with React behavior. Add separate `companion.html` and companion build config. Verify phone and tablet views, task creation/editing, reload persistence, tags, notes, JSON transfer and GitHub filters through browser automation.
-- [ ] Add `mobile/android` Gradle application with native import/share bridges scoped to packaged asset origin. Add CI Android build and emulator smoke checks, signing via ignored local key and repository secrets. Attach APK only to existing draft after successful build and installation.
-- [ ] Review the final patch, rerun affected checks, commit and push, and update draft notes and SHA-256 checksums with actual artifact availability.
+- [x] Test portable state and import first in `crates/devtrack-web/tests/companion.test.mjs`: invalid versions rejected, malformed imports atomic, desktop export target versions retained, mobile backup round trip, GitHub pull requests excluded, added-function evidence excludes calls and removed declarations.
+- [x] Implement state validation and GitHub normalization in `crates/devtrack-web/src/companion/model.ts` and `github.ts`. Run `npm test --workspace devtrack-web`.
+- [x] Collect and inspect 12ui candidates; expand the selected phone layout into project detail and transfer states, integrate generated layout with React behavior. Add separate `companion.html` and companion build config. Verify phone and tablet views, task creation/editing, reload persistence, tags, notes, JSON transfer and GitHub filters through browser automation.
+- [x] Add `mobile/android` Gradle application with native import/share bridges scoped to packaged asset origin. Add CI Android build and emulator smoke checks, signing via ignored local key and repository secrets. Attach APK only to existing draft after successful build and installation.
+- [x] Review the final patch, rerun affected checks, commit and push, and update draft notes and SHA-256 checksums with actual artifact availability.
