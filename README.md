@@ -8,6 +8,8 @@
 
 > A local-first project management system for solo developers. Projects, tasks, subtasks, notes, and time tracking — with Git awareness built in.
 
+The current versioned backlog is in [ROADMAP.md](ROADMAP.md) and [GitHub milestones](https://github.com/Zajfan/DevTrack/milestones). The [1.0 release](docs/releases/1.0.0.md) remains a draft while the remaining platform requirements are pending.
+
 ## Why DevTrack
 
 Most PM tools are built for teams, servers, and browsers. DevTrack is built for **one developer working across many projects**:
