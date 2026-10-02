@@ -1,4 +1,6 @@
+mod project_repository;
 use tauri::{
+    Emitter,
     Manager,
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
 };
@@ -98,9 +100,53 @@ fn main() {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.restore_state(StateFlags::all());
             }
+
+            // Auto-sync: run once on start, then every 5 minutes (when enabled).
+            // Runs in a background thread; skips when a timer is active.
+            {
+                let app_handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    let run = |app: &tauri::AppHandle| -> Result<String, String> {
+                        let state: tauri::State<AppState> = app.state();
+                        if state.get_active_timer().is_some() {
+                            return Err("timer running".to_string());
+                        }
+                        let settings = crate::settings::get_settings(app)?;
+                        if !settings.sync_enabled || settings.sync_url.is_empty() {
+                            return Err("sync disabled".to_string());
+                        }
+                        let sync = devtrack_core::sync::SyncSettings {
+                            enabled: true,
+                            repo_url: settings.sync_url,
+                            branch: "main".to_string(),
+                        };
+                        let result = devtrack_core::sync::sync_now(&state.config, &sync);
+                        if result.is_ok() {
+                            if let Ok(fresh) = devtrack_core::get_db_connection(&state.config) {
+                                *state.db.lock().unwrap() = fresh;
+                            }
+                            let _ = app.emit("sync-complete", ());
+                        }
+                        result
+                    };
+                    // on start (small delay so the UI settles)
+                    std::thread::sleep(std::time::Duration::from_secs(10));
+                    let _ = run(&app_handle);
+                    // periodic
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_secs(300));
+                        let _ = run(&app_handle);
+                    }
+                });
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            project_repository::project_directory,
+            project_repository::project_file,
+            project_repository::project_history,
+            project_repository::project_github_open,
+            project_repository::project_documentation_link,
             commands::projects_list,
             commands::project_get,
             commands::project_create,
@@ -142,6 +188,14 @@ fn main() {
             commands::sync_test,
             commands::sync_now,
             commands::sync_status,
+            commands::timer_pause,
+            commands::timer_resume,
+            commands::timer_state,
+            commands::task_time_entries,
+            commands::task_total_time,
+            commands::time_entry_update,
+            commands::time_entry_delete,
+            commands::project_stats,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,23 +1,33 @@
-import { Outlet } from 'react-router-dom';
-import { Sidebar } from './Sidebar';
-import { Header } from './Header';
-import { cn } from '@utils/helpers';
-import { useAppStore } from '@store/appStore';
+import { Outlet } from "react-router-dom";
+import { isTauri } from "@tauri-apps/api/core";
+import { Sidebar } from "./Sidebar";
+import { Header } from "./Header";
+import { cn } from "@utils/helpers";
+import { useAppStore } from "@store/appStore";
 
 export function Layout() {
   const sidebarOpen = useAppStore((state) => state.sidebarOpen);
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-950">
+    <div
+      className={cn(
+        "app-shell",
+        sidebarOpen ? "sidebar-expanded" : "sidebar-collapsed",
+      )}
+      onContextMenu={(e) => {
+        if (
+          isTauri() &&
+          !(e.target as HTMLElement).closest(
+            'input, textarea, [contenteditable="true"]',
+          )
+        )
+          e.preventDefault();
+      }}
+    >
       <Sidebar />
-      <Header />
-      <div className="flex flex-1 min-h-0">
-        <main
-          className={cn(
-            'flex-1 min-w-0 overflow-y-auto transition-[margin] duration-300',
-            sidebarOpen ? 'ml-64' : 'ml-16'
-          )}
-        >
-          <div className="p-5 max-w-[1400px]">
+      <div className="app-workspace">
+        <Header />
+        <main className="app-main">
+          <div className="page-content">
             <Outlet />
           </div>
         </main>

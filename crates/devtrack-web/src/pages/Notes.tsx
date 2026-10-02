@@ -2,7 +2,8 @@ import { useProjects, useNotes, useUpdateNotes } from '@hooks/useApi';
 import { useAppStore } from '@store/appStore';
 import { useEffect, useState } from 'react';
 import { cn } from '@utils/helpers';
-import { FileText, Save, Loader2, StickyNote } from 'lucide-react';
+import { FileText, Save, Loader2, StickyNote, Eye, Pencil } from 'lucide-react';
+import { MarkdownPreview } from '@components/MarkdownPreview';
 
 export function Notes() {
   const { selectedProjectId, setSelectedProject } = useAppStore();
@@ -14,6 +15,7 @@ export function Notes() {
   const [dirty, setDirty] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState(false);
 
   const selectedProject = projects?.find((p) => p.id === selectedProjectId);
 

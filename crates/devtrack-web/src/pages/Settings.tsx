@@ -14,6 +14,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { useSettingsStore } from '@store/settingsStore';
+import { saveFile } from '@components/NativeDialogs';
 
 interface Settings {
   username: string;
@@ -216,24 +218,32 @@ function GeneralSettings({ settings, setSettings }: { settings: any; setSettings
 }
 
 function AppearanceSettings({ settings, setSettings }: { settings: any; setSettings: any }) {
+  // Theme/compact apply INSTANTLY (persisted separately via useSettingsStore),
+  // in addition to being saved to the backend settings store on Save.
+  const { theme: liveTheme, setTheme: setLiveTheme, compactMode: liveCompact, setCompactMode: setLiveCompact } = useSettingsStore();
+  const theme = liveTheme ?? settings.theme;
+  const compactMode = liveCompact ?? settings.compactMode;
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Theme</h3>
       <div className="grid grid-cols-3 gap-3">
-        {['light', 'dark', 'system'].map((theme) => (
+        {['light', 'dark', 'system'].map((t) => (
           <button
-            key={theme}
-            onClick={() => setSettings({ ...settings, theme })}
+            key={t}
+            onClick={() => {
+              setSettings({ ...settings, theme: t });
+              setLiveTheme(t as 'light' | 'dark' | 'system');
+            }}
             className={cn(
               'p-4 rounded-lg border-2 transition-all text-center',
-              settings.theme === theme
+              theme === t
                 ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30'
                 : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700'
             )}
           >
-            <div className="text-lg font-medium capitalize">{theme}</div>
+            <div className="text-lg font-medium capitalize">{t}</div>
             <p className="text-xs text-gray-500 mt-1">
-              {theme === 'system' ? 'Follows OS' : theme === 'light' ? 'Light mode' : 'Dark mode'}
+              {t === 'system' ? 'Follows OS' : t === 'light' ? 'Light mode' : 'Dark mode'}
             </p>
           </button>
         ))}
@@ -244,8 +254,11 @@ function AppearanceSettings({ settings, setSettings }: { settings: any; setSetti
         <label className="flex items-center gap-3">
           <input
             type="checkbox"
-            checked={settings.compactMode}
-            onChange={(e) => setSettings({ ...settings, compactMode: e.target.checked })}
+            checked={compactMode}
+            onChange={(e) => {
+              setSettings({ ...settings, compactMode: e.target.checked });
+              setLiveCompact(e.target.checked);
+            }}
             className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
           />
           <span className="text-gray-700 dark:text-gray-300">Compact mode (denser UI)</span>
@@ -410,6 +423,7 @@ function SyncSettings({ settings, setSettings }: { settings: any; setSettings: a
 }
 
 function AdvancedSettings({ settings, setSettings }: { settings: any; setSettings: any }) {
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">API Server</h3>
@@ -447,10 +461,31 @@ function AdvancedSettings({ settings, setSettings }: { settings: any; setSetting
 
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Data Management</h3>
       <div className="space-y-3">
-        <button className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-2">
+        <button
+          onClick={async () => {
+            setExportStatus(null);
+            try {
+              const json = await invoke<string>('app_export_data');
+              const path = await saveFile({ title: 'Export Data', defaultPath: `devtrack-export-${new Date().toISOString().slice(0, 10)}.json` });
+              if (path) {
+                const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+                await writeTextFile(path, json);
+                setExportStatus(`Exported to ${path}`);
+              }
+            } catch (error) {
+              setExportStatus(`Export failed: ${String(error)}`);
+            }
+          }}
+          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-2"
+        >
           <Database className="w-4 h-4" />
           Export All Data (JSON)
         </button>
+        {exportStatus && (
+          <p className={cn('text-sm', exportStatus.startsWith('Exported') ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
+            {exportStatus}
+          </p>
+        )}
         <button className="px-4 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 flex items-center gap-2">
           <Trash2 className="w-4 h-4" />
           Delete All Data

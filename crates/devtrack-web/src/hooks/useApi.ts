@@ -20,6 +20,7 @@ export const useCreateProject = () => {
     mutationFn: (data: CreateProjectRequest) => api.projects.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     },
   });
 };
@@ -275,3 +276,73 @@ export const useDataDir = () =>
     queryFn: () => api.system.getDataDir(),
     staleTime: Infinity,
   });
+// Project stats (open tasks + total time)
+export const useProjectStats = (projectId: number | null) =>
+  useQuery({
+    queryKey: ['project-stats', projectId],
+    queryFn: () => api.projectStats(projectId!),
+    enabled: projectId !== null,
+  });
+
+// Per-task time entries + total
+export const useTaskTimeEntries = (taskId: number | null) =>
+  useQuery({
+    queryKey: ['task-time-entries', taskId],
+    queryFn: () => api.taskTimeEntries(taskId!),
+    enabled: taskId !== null,
+  });
+
+export const useTaskTotalTime = (taskId: number | null) =>
+  useQuery({
+    queryKey: ['task-total-time', taskId],
+    queryFn: () => api.taskTotalTime(taskId!),
+    enabled: taskId !== null,
+  });
+
+// Timer pause/resume/state
+export const useTimerPause = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: number) => api.timerPause(taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['active-timer'] });
+      queryClient.invalidateQueries({ queryKey: ['time-entries'] });
+    },
+  });
+};
+
+export const useTimerResume = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: number) => api.timerResume(taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['active-timer'] });
+    },
+  });
+};
+
+// Time entry edit/delete
+export const useTimeEntryUpdate = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { duration_seconds?: number; description?: string } }) =>
+      api.timeEntryUpdate(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['time-report'] });
+      queryClient.invalidateQueries({ queryKey: ['task-time-entries'] });
+    },
+  });
+};
+
+export const useTimeEntryDelete = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.timeEntryDelete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['time-report'] });
+      queryClient.invalidateQueries({ queryKey: ['task-time-entries'] });
+    },
+  });
+};

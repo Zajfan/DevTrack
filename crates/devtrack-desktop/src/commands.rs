@@ -14,6 +14,20 @@ pub struct StartTimerResponse {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TimerStateResponse {
+    pub state_name: String, // "Running" | "Paused"
+    pub running: bool,
+    pub running_start: Option<i64>,
+    pub accumulated: Option<i64>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ProjectStatsResponse {
+    pub project_id: i64,
+    pub open_tasks: i64,
+    pub total_seconds: i64,
+    pub total_formatted: String,
+}#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct StopTimerResponse {
     pub task_id: i64,
     pub duration_seconds: i64,
@@ -571,4 +585,84 @@ pub async fn sync_status(state: State<'_, AppState>, app: AppHandle) -> Result<S
         branch: "main".to_string(),
     };
     Ok(devtrack_core::sync::sync_status(&state.config, &sync))
+}
+
+#[tauri::command]
+pub async fn timer_pause(state: State<'_, AppState>, app: AppHandle, task_id: i64) -> Result<Option<i64>, String> {
+    let conn = state.db.lock().unwrap();
+    let elapsed = queries::pause_timer(&conn, task_id).map_err(|e| e.to_string())?;
+    drop(conn);
+    if let Some(elapsed) = elapsed {
+        let _ = app.emit("timer_update", TimerUpdateEvent { active: true, task_id, elapsed });
+    }
+    Ok(elapsed)
+}
+
+#[tauri::command]
+pub async fn timer_resume(state: State<'_, AppState>, app: AppHandle, task_id: i64) -> Result<(), String> {
+    let conn = state.db.lock().unwrap();
+    queries::resume_timer(&conn, task_id).map_err(|e| e.to_string())?;
+    drop(conn);
+    if let Some((running_id, _)) = state.get_active_timer() {
+        if running_id == task_id {
+            let _ = app.emit("timer_update", TimerUpdateEvent { active: true, task_id, elapsed: 0 });
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn timer_state(state: State<'_, AppState>, task_id: i64) -> Result<Option<TimerStateResponse>, String> {
+    let conn = state.db.lock().unwrap();
+    match queries::get_timer_state(&conn, task_id).map_err(|e| e.to_string())? {
+        Some((state_name, value)) => {
+            if state_name == "Paused" {
+                Ok(Some(TimerStateResponse {
+                    state_name,
+                    running: false,
+                    running_start: None,
+                    accumulated: Some(value),
+                }))
+            } else {
+                Ok(Some(TimerStateResponse {
+                    state_name,
+                    running: true,
+                    running_start: Some(value),
+                    accumulated: None,
+                }))
+            }
+        }
+        None => Ok(None),
+    }
+}
+
+#[tauri::command]
+pub async fn task_time_entries(state: State<'_, AppState>, task_id: i64) -> Result<Vec<TimeEntry>, String> {
+    let conn = state.db.lock().unwrap();
+    queries::time_entries_for_task(&conn, task_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn task_total_time(state: State<'_, AppState>, task_id: i64) -> Result<i64, String> {
+    let conn = state.db.lock().unwrap();
+    queries::total_time_for_task(&conn, task_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn time_entry_update(state: State<'_, AppState>, id: i64, duration_seconds: Option<i64>, description: Option<String>) -> Result<(), String> {
+    let conn = state.db.lock().unwrap();
+    queries::update_time_entry_by_id(&conn, id, duration_seconds, description.as_deref()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn time_entry_delete(state: State<'_, AppState>, id: i64) -> Result<(), String> {
+    let conn = state.db.lock().unwrap();
+    queries::delete_time_entry(&conn, id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn project_stats(state: State<'_, AppState>, project_id: i64) -> Result<ProjectStatsResponse, String> {
+    let conn = state.db.lock().unwrap();
+    let (open, total_seconds) = queries::project_stats(&conn, project_id).map_err(|e| e.to_string())?;
+    Ok(ProjectStatsResponse { project_id, open_tasks: open, total_seconds, total_formatted: format_duration(total_seconds) })
 }

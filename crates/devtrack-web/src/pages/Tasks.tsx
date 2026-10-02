@@ -1,7 +1,7 @@
-import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useSubtasks, useCreateSubtask, useUpdateSubtask, useDeleteSubtask, useProjects } from '@hooks/useApi';
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useSubtasks, useCreateSubtask, useUpdateSubtask, useDeleteSubtask, useProjects, useTaskTimeEntries, useTaskTotalTime, useActiveTimer, useStartTimer, useStopTimer, useTimerPause, useTimerResume, useTimeEntryDelete } from '@hooks/useApi';
 import { useAppStore } from '@store/appStore';
 import { useState } from 'react';
-import { cn, getPriorityColor, getStatusColor, formatDuration } from '@utils/helpers';
+import { cn, getPriorityColor, getStatusColor, formatDuration, formatTimestamp } from '@utils/helpers';
 import {
   Plus,
   CheckSquare,
@@ -13,6 +13,9 @@ import {
   ChevronUp,
   Timer,
   FolderGit2,
+  Pause,
+  Play,
+  ArrowUpDown,
 } from 'lucide-react';
 import type { Task } from '../types';
 
@@ -31,8 +34,25 @@ export function Tasks() {
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Todo' | 'Done'>('all');
+  const [sortBy, setSortBy] = useState<'created' | 'priority' | 'due'>('created');
 
   const selectedProject = projects?.find((p) => p.id === selectedProjectId);
+
+  const sortVal = (t: Task) => {
+    if (sortBy === 'priority') {
+      return { High: 0, Medium: 1, Low: 2 }[t.priority] ?? 3;
+    }
+    if (sortBy === 'due') {
+      if (!t.due_date) return 99991231;
+      return parseInt(t.due_date.replace(/-/g, ''), 10);
+    }
+    return t.id; // created (id order)
+  };
+
+  const visibleTasks = (tasks ?? [])
+    .filter((t) => statusFilter === 'all' || t.status === statusFilter)
+    .sort((a, b) => sortVal(a) - sortVal(b));
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +146,41 @@ export function Tasks() {
         </button>
       </div>
 
+      {/* Sort / filter toolbar */}
+      {!isLoading && tasks?.length ? (
+        <div className="flex items-center gap-3 flex-wrap text-sm">
+          <span className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+            <ArrowUpDown className="w-3.5 h-3.5" /> Sort
+          </span>
+          <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+            {(['created', 'priority', 'due'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSortBy(s)}
+                className={cn('px-2.5 py-1 rounded-md text-xs font-medium transition-colors capitalize', sortBy === s ? 'bg-purple-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700')}
+              >
+                {s === 'created' ? 'Newest' : s}
+              </button>
+            ))}
+          </div>
+          <span className="text-gray-400">|</span>
+          <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+            {(['all', 'Todo', 'Done'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={cn('px-2.5 py-1 rounded-md text-xs font-medium transition-colors', statusFilter === s ? 'bg-purple-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700')}
+              >
+                {s === 'all' ? 'All' : s}
+              </button>
+            ))}
+          </div>
+          <span className="text-gray-400 dark:text-gray-500 text-xs ml-auto">
+            {visibleTasks.length} of {tasks.length}
+          </span>
+        </div>
+      ) : null}
+
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <TaskCardSkeleton key={i} />)}
@@ -141,7 +196,7 @@ export function Tasks() {
         </div>
       ) : (
         <div className="space-y-3">
-          {tasks.map((task) => (
+          {visibleTasks.map((task) => (
             <TaskCard
               key={task.id}
               task={task}
@@ -242,12 +297,29 @@ function TaskCardSkeleton() {
 function TaskCard({ task, onToggle, onEdit, onDelete }: { task: Task; onToggle: () => void; onEdit: () => void; onDelete: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const { data: subtasks } = useSubtasks(expanded ? task.id : null);
+  const { data: timeEntries } = useTaskTimeEntries(expanded ? task.id : null);
+  const { data: totalTime } = useTaskTotalTime(expanded ? task.id : null);
   const createSubtask = useCreateSubtask();
   const updateSubtask = useUpdateSubtask();
   const deleteSubtask = useDeleteSubtask();
+  const deleteEntry = useTimeEntryDelete();
+  const startTimer = useStartTimer();
+  const stopTimer = useStopTimer();
+  const pauseTimer = useTimerPause();
+  const resumeTimer = useTimerResume();
+  const { data: activeTimerData } = useActiveTimer();
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
   const doneCount = subtasks?.filter((s) => s.done).length ?? 0;
+  const running = !!(activeTimerData && 'task_id' in activeTimerData && activeTimerData.task_id === task.id);
+
+  const handleTimerButton = async () => {
+    if (running) {
+      await stopTimer.mutateAsync(task.id);
+    } else {
+      await startTimer.mutateAsync(task.id);
+    }
+  };
 
   return (
     <div className={cn('native-pane p-4 transition-colors', task.status === 'Done' && 'opacity-60')}>
@@ -269,10 +341,10 @@ function TaskCard({ task, onToggle, onEdit, onDelete }: { task: Task; onToggle: 
             </h3>
             <div className="flex items-center gap-1 flex-shrink-0">
               <button
-                onClick={onToggle}
-                title="Start/stop timer"
-                aria-label="Start/stop timer"
-                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-400"
+                onClick={(e) => { e.stopPropagation(); handleTimerButton(); }}
+                title={running ? 'Stop timer' : 'Start timer'}
+                aria-label={running ? 'Stop timer' : 'Start timer'}
+                className={cn('p-1.5 rounded transition-colors', running ? 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700')}
               >
                 <Timer className="w-4 h-4" />
               </button>
@@ -322,15 +394,22 @@ function TaskCard({ task, onToggle, onEdit, onDelete }: { task: Task; onToggle: 
             ) : null}
           </div>
 
-          {/* Expanded detail: description + subtasks */}
+          {/* Expanded detail: description + subtasks + time history */}
           {expanded && (
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               {task.description && (
                 <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap mb-4">{task.description}</p>
               )}
-              <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-                Sub-tasks {subtasks?.length ? `(${doneCount}/${subtasks.length})` : ''}
-              </h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Sub-tasks {subtasks?.length ? `(${doneCount}/${subtasks.length})` : ''}
+                </h4>
+                {timeEntries?.length ? (
+                  <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+                    total {formatDuration(totalTime ?? 0)}
+                  </span>
+                ) : null}
+              </div>
               <div className="space-y-1.5 mb-3">
                 {subtasks?.map((st) => (
                   <div key={st.id} className="flex items-center gap-2.5 group">
@@ -377,6 +456,35 @@ function TaskCard({ task, onToggle, onEdit, onDelete }: { task: Task; onToggle: 
                   <Plus className="w-3.5 h-3.5" /> Add
                 </button>
               </form>
+
+              {/* Time history */}
+              {timeEntries?.length ? (
+                <div className="mt-5">
+                  <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                    Time entries
+                  </h4>
+                  <div className="space-y-1.5">
+                    {timeEntries.map((entry) => (
+                      <div key={entry.id} className="flex items-center gap-2.5 text-sm group">
+                        <span className="text-xs text-gray-400 font-mono flex-shrink-0 w-24">
+                          {formatTimestamp(Number(entry.start_time))}
+                        </span>
+                        <span className="font-mono text-gray-700 dark:text-gray-200 flex-1">
+                          {formatDuration(entry.duration_seconds)}
+                          {entry.end_time === null && <span className="ml-2 text-purple-500 text-xs">running</span>}
+                        </span>
+                        <button
+                          onClick={() => { if (confirm('Delete this time entry?')) deleteEntry.mutate(entry.id); }}
+                          aria-label="Delete time entry"
+                          className="p-1 opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/30 rounded text-red-500 transition-opacity"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
         </div>

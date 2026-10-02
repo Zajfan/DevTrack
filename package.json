@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "concurrently \"cargo run --bin devtrack-api\" \"npm run dev --prefix crates/devtrack-web\"",
     "dev:desktop": "cd crates/devtrack-desktop && cargo tauri dev",
-    "build": "cargo build --workspace --release && npm run build --prefix crates/devtrack-web",
+    "build": "npm run build --prefix crates/devtrack-web && cargo build --workspace --release",
     "build:api": "cargo build --release --bin devtrack-api",
     "build:web": "npm run build --prefix crates/devtrack-web",
     "build:tui": "cargo build --release --bin devtrack",

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+pub mod repository;
 pub mod models;
 pub mod queries;
 pub mod sync;
@@ -84,6 +85,7 @@ pub fn init_db(config: &Config) -> Result<Connection> {
     // Migrations
     let _ = conn.execute("ALTER TABLE tasks ADD COLUMN description TEXT DEFAULT ''", []);
     let _ = conn.execute("ALTER TABLE tasks ADD COLUMN due_date TEXT", []);
+    let _ = conn.execute("ALTER TABLE time_entries ADD COLUMN paused_at INTEGER", []);
     
     Ok(conn)
 }

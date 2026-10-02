@@ -3,6 +3,12 @@ name = "devtrack-desktop"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+# Standalone Cargo builds must use bundled assets. `cargo tauri dev` disables
+# this feature automatically when it launches the frontend development server.
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
 [dependencies]
 devtrack-core = { path = "../devtrack-core" }
 tauri = { version = "2", features = [] }

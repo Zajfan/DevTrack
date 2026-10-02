@@ -420,3 +420,124 @@ pub fn get_settings_metadata(config: &crate::Config, key: &str) -> Option<String
     )
     .ok()
 }
+
+// ==================== Timer pause/resume ====================
+
+/// Pause the running timer for a task: records elapsed so far, keeps the entry open.
+pub fn pause_timer(conn: &Connection, task_id: i64) -> Result<Option<i64>> {
+    let entry = conn.query_row(
+        "SELECT id, start_time FROM time_entries WHERE task_id = ?1 AND end_time IS NULL AND paused_at IS NULL ORDER BY start_time DESC LIMIT 1",
+        params![task_id],
+        |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
+    ).optional()?;
+    if let Some((entry_id, start)) = entry {
+        let now = now_ts();
+        conn.execute(
+            "UPDATE time_entries SET paused_at = ?1, duration_seconds = ?2 WHERE id = ?3",
+            params![now, now - start, entry_id],
+        )?;
+        Ok(Some(now - start))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Resume a paused timer: accumulate duration, clear pause marker.
+pub fn resume_timer(conn: &Connection, task_id: i64) -> Result<Option<i64>> {
+    let entry = conn.query_row(
+        "SELECT id, duration_seconds FROM time_entries WHERE task_id = ?1 AND paused_at IS NOT NULL AND end_time IS NULL ORDER BY start_time DESC LIMIT 1",
+        params![task_id],
+        |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
+    ).optional()?;
+    if let Some((entry_id, _accumulated)) = entry {
+        let now = now_ts();
+        conn.execute(
+            "UPDATE time_entries SET paused_at = NULL, start_time = ?1 WHERE id = ?2",
+            params![now, entry_id],
+        )?;
+        Ok(Some(entry_id))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Timer state: Running (start_time), Paused (accumulated), or none.
+pub fn get_timer_state(conn: &Connection, task_id: i64) -> Result<Option<(String, i64)>> {
+    conn.query_row(
+        "SELECT
+            CASE WHEN paused_at IS NOT NULL THEN 'Paused' ELSE 'Running' END,
+            CASE WHEN paused_at IS NOT NULL THEN duration_seconds ELSE start_time END
+         FROM time_entries WHERE task_id = ?1 AND end_time IS NULL ORDER BY start_time DESC LIMIT 1",
+        params![task_id],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    ).optional()
+}
+
+/// Total tracked seconds for one task (completed entries only).
+pub fn total_time_for_task(conn: &Connection, task_id: i64) -> Result<i64> {
+    conn.query_row(
+        "SELECT COALESCE(SUM(duration_seconds), 0) FROM time_entries WHERE task_id = ?1 AND end_time IS NOT NULL",
+        params![task_id],
+        |row| row.get(0),
+    )
+}
+
+// ==================== Time entry edit/delete ====================
+
+pub fn update_time_entry_by_id(conn: &Connection, id: i64, duration_seconds: Option<i64>, description: Option<&str>) -> Result<()> {
+    let mut updates = Vec::new();
+    let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+    if let Some(d) = duration_seconds { updates.push("duration_seconds = ?"); params_vec.push(Box::new(d)); }
+    if let Some(desc) = description { updates.push("description = ?"); params_vec.push(Box::new(desc.to_string())); }
+    if updates.is_empty() { return Ok(()); }
+    let sql = format!("UPDATE time_entries SET {} WHERE id = ?", updates.join(", "));
+    params_vec.push(Box::new(id));
+    let refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|b| b.as_ref()).collect();
+    conn.execute(&sql, refs.as_slice())?;
+    Ok(())
+}
+
+pub fn delete_time_entry(conn: &Connection, id: i64) -> Result<()> {
+    conn.execute("DELETE FROM time_entries WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
+/// Time entries for one task (all, newest first).
+pub fn time_entries_for_task(conn: &Connection, task_id: i64) -> Result<Vec<TimeEntry>> {
+    let mut stmt = conn.prepare(
+        "SELECT te.id, te.task_id, t.title, p.name, te.start_time, te.end_time, te.duration_seconds, te.description
+         FROM time_entries te
+         JOIN tasks t ON te.task_id = t.id
+         JOIN projects p ON t.project_id = p.id
+         WHERE te.task_id = ?1
+         ORDER BY te.start_time DESC"
+    )?;
+    let rows = stmt.query_map([task_id], |row| Ok(TimeEntry {
+        id: row.get(0)?,
+        task_id: row.get(1)?,
+        task_title: row.get(2)?,
+        project_name: row.get(3)?,
+        start_time: row.get(4)?,
+        end_time: row.get(5)?,
+        duration_seconds: row.get(6)?,
+        description: row.get(7)?,
+    }))?;
+    rows.collect()
+}
+
+/// Per-project stats: open task count and total tracked seconds.
+pub fn project_stats(conn: &Connection, project_id: i64) -> Result<(i64, i64)> {
+    let open: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM tasks WHERE project_id = ?1 AND status != 'Done'",
+        params![project_id],
+        |row| row.get(0),
+    )?;
+    let total: i64 = conn.query_row(
+        "SELECT COALESCE(SUM(te.duration_seconds), 0)
+         FROM time_entries te JOIN tasks t ON te.task_id = t.id
+         WHERE t.project_id = ?1 AND te.end_time IS NOT NULL",
+        params![project_id],
+        |row| row.get(0),
+    )?;
+    Ok((open, total))
+}
