@@ -111,9 +111,25 @@ pub async fn project_create(state: State<'_, AppState>, name: String, path: Stri
 }
 
 #[tauri::command]
-pub async fn project_update(state: State<'_, AppState>, id: i64, status: Option<String>, tags: Option<String>) -> Result<Project, String> {
+pub async fn project_update(
+    state: State<'_, AppState>,
+    id: i64,
+    name: Option<String>,
+    path: Option<String>,
+    status: Option<String>,
+    tags: Option<String>,
+) -> Result<Project, String> {
+    let canonical_path = if let Some(path) = path {
+        let resolved = std::fs::canonicalize(&path).map_err(|error| format!("Invalid project folder: {error}"))?;
+        if !resolved.is_dir() {
+            return Err("Project location must be a folder".into());
+        }
+        Some(resolved.to_string_lossy().into_owned())
+    } else {
+        None
+    };
     let conn = state.db.lock().unwrap();
-    queries::update_project(&conn, id, status.as_deref(), tags.as_deref()).map_err(|e| e.to_string())?;
+    queries::update_project(&conn, id, name.as_deref(), canonical_path.as_deref(), status.as_deref(), tags.as_deref()).map_err(|e| e.to_string())?;
     queries::get_project_by_id(&conn, id).map_err(|e| e.to_string())
 }
 

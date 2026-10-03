@@ -5,6 +5,7 @@ use devtrack_core::{
     repository::{self, ChangedFile, DirectoryListing, WorkCommit, WorkHistory},
 };
 use serde_json::Value;
+use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use tauri::State;
 
@@ -122,16 +123,18 @@ pub async fn project_history(
     page: Option<usize>,
 ) -> Result<WorkHistory, String> {
     let root = root(&state, id)?;
-    let cache_path = state
-        .config
-        .data_dir
-        .join("history")
-        .join(format!("project-{id}.json"));
     let root_info = root.clone();
     let (repo, _, prefix) =
         tauri::async_runtime::spawn_blocking(move || repository::repository_info(&root_info))
             .await
             .map_err(|e| e.to_string())?;
+    let mut cache_hasher = std::collections::hash_map::DefaultHasher::new();
+    root.hash(&mut cache_hasher);
+    let cache_path = state
+        .config
+        .data_dir
+        .join("history")
+        .join(format!("project-{id}-{:016x}.json", cache_hasher.finish()));
     let cached = std::fs::read(&cache_path)
         .ok()
         .and_then(|b| serde_json::from_slice::<WorkHistory>(&b).ok())

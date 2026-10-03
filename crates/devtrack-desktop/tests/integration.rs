@@ -74,7 +74,7 @@ fn test_project_crud() {
     let projects = queries::get_all_projects(&conn, false).unwrap();
     assert_eq!(projects.len(), 1);
 
-    queries::update_project(&conn, project_id, Some("Archived"), Some("tag1,tag2")).unwrap();
+    queries::update_project(&conn, project_id, None, None, Some("Archived"), Some("tag1,tag2")).unwrap();
     let updated = queries::get_project_by_id(&conn, project_id).unwrap();
     assert_eq!(updated.status, "Archived");
     assert_eq!(updated.tags, "tag1,tag2");
@@ -403,7 +403,7 @@ fn test_dashboard_summary() {
 
     let project_id1 = queries::create_project(&conn, "Project 1", "/tmp/p1").unwrap();
     let project_id2 = queries::create_project(&conn, "Project 2", "/tmp/p2").unwrap();
-    queries::update_project(&conn, project_id2, Some("Archived"), None).unwrap();
+    queries::update_project(&conn, project_id2, None, None, Some("Archived"), None).unwrap();
 
     let _task_id1 = queries::create_task(&conn, project_id1, "Task 1", None, Some("High"), None).unwrap();
     let _task_id2 = queries::create_task(&conn, project_id1, "Task 2", None, Some("Medium"), None).unwrap();

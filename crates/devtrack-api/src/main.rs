@@ -180,13 +180,20 @@ async fn get_project(State(state): State<Arc<AppState>>, Path(id): Path<i64>) ->
 
 async fn update_project(State(state): State<Arc<AppState>>, Path(id): Path<i64>, Json(payload): Json<UpdateProjectRequest>) -> impl IntoResponse {
     let db_path = state.db_path.clone();
-    let id = id;
+    let name = payload.name.clone();
+    let path = payload.path.clone();
     let status = payload.status.clone();
     let tags = payload.tags.clone();
     
     let result = spawn_blocking(move || {
         let conn = open_conn(&db_path)?;
-        devtrack_core::queries::update_project(&conn, id, status.as_deref(), tags.as_deref())
+        let canonical_path = if let Some(path) = path {
+            let resolved = std::fs::canonicalize(&path)?;
+            if !resolved.is_dir() { anyhow::bail!("Project location must be a folder"); }
+            Some(resolved.to_string_lossy().into_owned())
+        } else { None };
+        devtrack_core::queries::update_project(&conn, id, name.as_deref(), canonical_path.as_deref(), status.as_deref(), tags.as_deref())?;
+        Ok::<_, anyhow::Error>(())
     }).await;
     
     match result {

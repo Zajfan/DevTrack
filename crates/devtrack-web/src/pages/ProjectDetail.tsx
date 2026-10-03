@@ -10,6 +10,7 @@ import {
   FileText,
   FolderOpen,
   GitBranch,
+  Edit,
   Loader2,
   TerminalSquare,
 } from "lucide-react";
@@ -21,6 +22,8 @@ import { Tasks } from "./Tasks";
 import { ProjectFiles } from "../components/ProjectFiles";
 import { ProjectWork } from "../components/ProjectWork";
 import { openProjectGitHub } from "../hooks/useRepository";
+import { ProjectEditDialog } from "../components/ProjectEditDialog";
+import type { Project } from "../types";
 
 export function ProjectDetail() {
   const { id: rawId } = useParams();
@@ -31,6 +34,7 @@ export function ProjectDetail() {
   const [params, setParams] = useSearchParams();
   const tab = params.get("tab") === "work" ? "work" : params.get("tab") === "planned" ? "planned" : "files";
   const [actionError, setActionError] = useState<string | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const navigate = useNavigate();
   const select = useAppStore((state) => state.setSelectedProject);
   useEffect(() => {
@@ -87,6 +91,10 @@ export function ProjectDetail() {
           <p title={project.path}>{project.path}</p>
         </div>
         <div className="detail-actions">
+          <button className="secondary-button" onClick={() => setEditingProject(project)}>
+            <Edit size={15} />
+            Edit project
+          </button>
           <button
             className="secondary-button"
             onClick={() => action(() => api.projects.openPath(id))}
@@ -103,6 +111,7 @@ export function ProjectDetail() {
           </button>
         </div>
       </div>
+      {editingProject && <ProjectEditDialog project={editingProject} onClose={() => setEditingProject(null)} />}
       {actionError && (
         <p className="repo-notice" role="alert">
           {actionError}

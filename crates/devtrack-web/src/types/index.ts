@@ -117,6 +117,7 @@ export interface CreateProjectRequest {
 
 export interface UpdateProjectRequest {
   name?: string;
+  path?: string;
   description?: string;
   status?: string;
   color?: string;

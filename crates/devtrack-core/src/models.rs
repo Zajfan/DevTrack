@@ -123,6 +123,8 @@ pub struct CreateProjectRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateProjectRequest {
+    pub name: Option<String>,
+    pub path: Option<String>,
     pub status: Option<String>,
     pub tags: Option<String>,
 }

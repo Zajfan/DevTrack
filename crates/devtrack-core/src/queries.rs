@@ -48,9 +48,25 @@ pub fn create_project(conn: &Connection, name: &str, path: &str) -> Result<i64> 
     Ok(conn.last_insert_rowid())
 }
 
-pub fn update_project(conn: &Connection, id: i64, status: Option<&str>, tags: Option<&str>) -> Result<()> {
+pub fn update_project(
+    conn: &Connection,
+    id: i64,
+    name: Option<&str>,
+    path: Option<&str>,
+    status: Option<&str>,
+    tags: Option<&str>,
+) -> Result<()> {
     let mut updates = Vec::new();
     let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+    if let Some(value) = name {
+        updates.push("name = ?");
+        params_vec.push(Box::new(value.to_string()));
+    }
+    if let Some(value) = path {
+        updates.push("path = ?");
+        params_vec.push(Box::new(value.to_string()));
+    }
     
     if let Some(s) = status {
         updates.push("status = ?");

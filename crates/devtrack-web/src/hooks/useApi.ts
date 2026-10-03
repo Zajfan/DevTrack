@@ -33,6 +33,11 @@ export const useUpdateProject = () => {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['project', id] });
+      queryClient.invalidateQueries({ queryKey: ['project-directory', id] });
+      queryClient.invalidateQueries({ queryKey: ['project-file', id] });
+      queryClient.invalidateQueries({ queryKey: ['project-git', id] });
+      queryClient.invalidateQueries({ queryKey: ['project-history', id] });
+      queryClient.invalidateQueries({ queryKey: ['project-issues', id] });
     },
   });
 };
