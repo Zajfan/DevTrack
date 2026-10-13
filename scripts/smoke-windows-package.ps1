@@ -1,13 +1,17 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string] $PackageDirectory
+    [string] $PackageDirectory,
+    [string] $ArtifactsDirectory = "$env:RUNNER_TEMP/devtrack-package-results"
 )
 
 $ErrorActionPreference = 'Stop'
-$package = Get-ChildItem -Path $PackageDirectory -Filter '*_windows_x64.msi' | Select-Object -First 1
+New-Item -ItemType Directory -Force -Path $ArtifactsDirectory | Out-Null
+$ArtifactsDirectory = (Resolve-Path $ArtifactsDirectory).Path
+$package = Get-ChildItem -Path $PackageDirectory -Filter '*.msi' | Select-Object -First 1
 if (-not $package) { throw "No Windows x64 MSI package found in $PackageDirectory" }
 
-$installCode = Start-Process msiexec.exe -ArgumentList @('/i', $package.FullName, '/qn', '/norestart') -Wait -PassThru
+$installLog = Join-Path $ArtifactsDirectory 'install.log'
+$installCode = Start-Process msiexec.exe -ArgumentList @('/i', "`"$($package.FullName)`"", '/qn', '/norestart', '/L*v', "`"$installLog`"") -Wait -PassThru
 if ($installCode.ExitCode -notin @(0, 3010)) { throw "MSI installation failed with exit code $($installCode.ExitCode)" }
 
 $uninstallRoots = @(
@@ -66,6 +70,21 @@ try {
         }, [IntPtr]::Zero)
     } while (-not $windowTitle -and (Get-Date) -lt $deadline)
     if (-not $windowTitle) { throw 'DevTrack started but did not show a visible DevTrack window within 45 seconds' }
+    Start-Sleep -Seconds 10
+    if ($app.HasExited) { throw "DevTrack exited after showing its window with code $($app.ExitCode)" }
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
+    $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
+    $bitmap = New-Object System.Drawing.Bitmap($bounds.Width, $bounds.Height)
+    $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+    try {
+        $graphics.CopyFromScreen($bounds.Left, $bounds.Top, 0, 0, $bitmap.Size)
+        $bitmap.Save((Join-Path $ArtifactsDirectory 'desktop.png'))
+    } finally {
+        $graphics.Dispose()
+        $bitmap.Dispose()
+    }
+    "Installed and launched $exe; visible window: $windowTitle; remained running for 10 seconds" | Set-Content (Join-Path $ArtifactsDirectory 'result.txt')
     Write-Host "Installed and launched $exe; visible window: $windowTitle"
 } finally {
     Get-Process devtrack-desktop -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue

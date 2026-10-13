@@ -87,6 +87,7 @@ src-tauri/
 
 # Temporary validation bytecode
 __pycache__/
+verification-results/
 .release-keys/
 mobile/android/.gradle/
 mobile/android/**/build/

@@ -2,6 +2,8 @@
 set -euo pipefail
 
 dmg=${1:?Usage: smoke-macos-package.sh path/to/DevTrack.dmg}
+artifacts=${2:-"$RUNNER_TEMP/devtrack-package-results"}
+mkdir -p "$artifacts"
 mount_point="$RUNNER_TEMP/devtrack-dmg"
 app_path="$RUNNER_TEMP/DevTrack.app"
 mkdir -p "$mount_point"
@@ -26,10 +28,14 @@ case "$host_arch" in
   *) echo "Unexpected runner architecture: $host_arch" >&2; exit 1 ;;
 esac
 
-open -n "$app_path"
+open -n "$app_path" >"$artifacts/launch.log" 2>&1
 for attempt in $(seq 1 45); do
   if pgrep -f "$binary" >/dev/null; then
-    echo "Mounted $dmg ($arches) and launched $app_path"
+    # A process appearing briefly is insufficient: catch delayed startup crashes.
+    sleep 10
+    pgrep -f "$binary" >"$artifacts/process.txt"
+    screencapture -x "$artifacts/desktop.png"
+    echo "Mounted $dmg ($arches); app remained running for 10 seconds" | tee "$artifacts/result.txt"
     exit 0
   fi
   sleep 1

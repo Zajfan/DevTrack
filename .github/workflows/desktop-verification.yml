@@ -1,0 +1,117 @@
+name: Desktop Verification
+on:
+  pull_request:
+    paths:
+      - 'crates/devtrack-core/**'
+      - 'crates/devtrack-desktop/**'
+      - 'crates/devtrack-web/**'
+      - 'scripts/**'
+      - 'Cargo.*'
+      - 'package*.json'
+      - '.github/workflows/desktop-verification.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'crates/devtrack-core/**'
+      - 'crates/devtrack-desktop/**'
+      - 'crates/devtrack-web/**'
+      - 'scripts/**'
+      - 'Cargo.*'
+      - 'package*.json'
+      - '.github/workflows/desktop-verification.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: desktop-verification-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  workflows:
+    name: Native workflows (${{ matrix.runner }})
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-22.04, windows-2022, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: desktop-verification-${{ matrix.runner }}
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev xvfb
+      - run: npm ci
+      - run: npm run build --workspace devtrack-web
+      - name: Build native app with test-only WebDriver
+        run: cargo build -p devtrack-desktop --features desktop-test --locked
+      - name: Test automation isolation
+        run: cargo test -p devtrack-desktop --features desktop-test --locked test_support::tests
+      - name: Native workflows (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python scripts/test-desktop-workflows.py target/debug/devtrack-desktop --artifacts verification-results
+      - name: Native workflows (Windows)
+        if: runner.os == 'Windows'
+        run: python scripts/test-desktop-workflows.py target/debug/devtrack-desktop.exe --artifacts verification-results
+      - name: Native workflows (macOS)
+        if: runner.os == 'macOS'
+        run: python scripts/test-desktop-workflows.py target/debug/devtrack-desktop --artifacts verification-results
+      - name: Upload screenshots, logs and fixture data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-workflows-${{ matrix.runner }}
+          path: verification-results/
+          if-no-files-found: warn
+          retention-days: 14
+  packages:
+    name: Production package (${{ matrix.runner }})
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-2022, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: desktop-package-${{ matrix.runner }}
+      - run: npm ci
+      # No desktop-test feature: exercise the actual production configuration.
+      # Build this checkout, not the older draft release tag.
+      - name: Build production installers
+        working-directory: crates/devtrack-desktop
+        run: npx --no-install tauri build --ci
+      - name: Install, launch and uninstall MSI
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/smoke-windows-package.ps1 -PackageDirectory target/release/bundle/msi -ArtifactsDirectory verification-results
+      - name: Mount and launch DMG
+        if: runner.os == 'macOS'
+        shell: bash
+        run: bash scripts/smoke-macos-package.sh target/release/bundle/dmg/*.dmg verification-results
+      - name: Upload package evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-package-${{ matrix.runner }}
+          path: verification-results/
+          if-no-files-found: warn
+          retention-days: 14

@@ -10,6 +10,8 @@ use tauri_plugin_window_state::{StateFlags, WindowExt};
 mod state;
 mod commands;
 mod settings;
+#[cfg(feature = "desktop-test")]
+mod test_support;
 
 use crate::state::AppState;
 
@@ -58,7 +60,26 @@ fn build_native_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wry>> 
 }
 
 fn main() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    let context = tauri::generate_context!();
+    #[cfg(feature = "desktop-test")]
+    let (builder, context) = {
+        use std::hash::{Hash, Hasher};
+        // Fail before starting WebDriver or loading any user settings.
+        let test_config = test_support::config_from_path(std::env::var_os("DEVTRACK_TEST_DATA_DIR").map(Into::into))
+            .expect("Automation builds require an isolated data directory");
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        test_config.data_dir.hash(&mut hasher);
+        let mut context = context;
+        context.config_mut().identifier = format!("com.devtrack.verification.h{:016x}", hasher.finish());
+        for window in &mut context.config_mut().app.windows {
+            // macOS otherwise uses WKWebsiteDataStore::defaultDataStore, even
+            // with a separate app identifier. Business data remains on disk.
+            window.incognito = true;
+        }
+        (builder.plugin(tauri_plugin_wdio_webdriver::init()), context)
+    };
+    builder
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -199,6 +220,6 @@ fn main() {
             commands::time_entry_delete,
             commands::project_stats,
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running tauri application");
 }

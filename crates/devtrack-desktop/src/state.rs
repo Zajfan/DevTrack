@@ -11,7 +11,12 @@ pub struct AppState {
 
 impl AppState {
     pub fn new() -> anyhow::Result<Self> {
+        #[cfg(not(feature = "desktop-test"))]
         let config = Config::new()?;
+        #[cfg(feature = "desktop-test")]
+        let config = crate::test_support::config_from_path(
+            std::env::var_os("DEVTRACK_TEST_DATA_DIR").map(Into::into),
+        )?;
         let conn = devtrack_core::init_db(&config)?;
         Ok(Self {
             config,

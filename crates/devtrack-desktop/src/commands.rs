@@ -1,6 +1,6 @@
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_notification::NotificationExt;
-use devtrack_core::{queries, get_git_info, scan_projects, Config, format_duration};
+use devtrack_core::{queries, get_git_info, scan_projects, format_duration};
 use devtrack_core::models::{Project, ProjectWithGit, GitInfo, Task, SubTask, TimeEntry, TimeLogSummary};
 use devtrack_core::sync::{SyncSettings, SyncStatus};
 use crate::{AppState, state::now_ts, settings::Settings};
@@ -291,16 +291,14 @@ pub async fn time_report(state: State<'_, AppState>, period: String) -> Result<T
 pub async fn notes_get(state: State<'_, AppState>, project_id: i64) -> Result<String, String> {
     let conn = state.db.lock().unwrap();
     let project = queries::get_project_by_id(&conn, project_id).map_err(|e| e.to_string())?;
-    let config = Config::new().map_err(|e| e.to_string())?;
-    Ok(queries::read_notes(&config, &project.name).unwrap_or_else(|_| "No notes found.".to_string()))
+    Ok(queries::read_notes(&state.config, &project.name).unwrap_or_else(|_| "No notes found.".to_string()))
 }
 
 #[tauri::command]
 pub async fn notes_update(state: State<'_, AppState>, project_id: i64, content: String) -> Result<(), String> {
     let conn = state.db.lock().unwrap();
     let project = queries::get_project_by_id(&conn, project_id).map_err(|e| e.to_string())?;
-    let config = Config::new().map_err(|e| e.to_string())?;
-    queries::write_notes(&config, &project.name, &content).map_err(|e| e.to_string())
+    queries::write_notes(&state.config, &project.name, &content).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
