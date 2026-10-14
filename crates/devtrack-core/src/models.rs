@@ -11,6 +11,24 @@ pub struct Project {
     pub tags: String,
     pub last_accessed: Option<String>,
     pub created_at: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub color: String,
+    #[serde(default)]
+    pub icon: String,
+    #[serde(default)]
+    pub concept_what: String,
+    #[serde(default)]
+    pub concept_why: String,
+    #[serde(default)]
+    pub concept_how: String,
+    #[serde(default)]
+    pub concept_when: String,
+    #[serde(default)]
+    pub concept_where: String,
+    #[serde(default)]
+    pub concept_with_what: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -209,6 +227,15 @@ impl Default for Project {
             tags: String::new(),
             last_accessed: None,
             created_at: Utc::now().to_rfc3339(),
+            description: String::new(),
+            color: String::new(),
+            icon: String::new(),
+            concept_what: String::new(),
+            concept_why: String::new(),
+            concept_how: String::new(),
+            concept_when: String::new(),
+            concept_where: String::new(),
+            concept_with_what: String::new(),
         }
     }
 }

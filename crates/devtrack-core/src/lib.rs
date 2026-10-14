@@ -86,11 +86,23 @@ pub fn init_db(config: &Config) -> Result<Connection> {
     let _ = conn.execute("ALTER TABLE tasks ADD COLUMN description TEXT DEFAULT ''", []);
     let _ = conn.execute("ALTER TABLE tasks ADD COLUMN due_date TEXT", []);
     let _ = conn.execute("ALTER TABLE time_entries ADD COLUMN paused_at INTEGER", []);
-    
+
     let has_version: bool = conn.query_row("SELECT EXISTS(SELECT 1 FROM pragma_table_info('tasks') WHERE name='target_version')", [], |row| row.get(0))?;
     if !has_version {
         conn.execute("ALTER TABLE tasks ADD COLUMN target_version TEXT NOT NULL DEFAULT ''", [])?;
     }
+
+    // Project extended fields
+    let _ = conn.execute("ALTER TABLE projects ADD COLUMN description TEXT NOT NULL DEFAULT ''", []);
+    let _ = conn.execute("ALTER TABLE projects ADD COLUMN color TEXT NOT NULL DEFAULT ''", []);
+    let _ = conn.execute("ALTER TABLE projects ADD COLUMN icon TEXT NOT NULL DEFAULT ''", []);
+    let _ = conn.execute("ALTER TABLE projects ADD COLUMN concept_what TEXT NOT NULL DEFAULT ''", []);
+    let _ = conn.execute("ALTER TABLE projects ADD COLUMN concept_why TEXT NOT NULL DEFAULT ''", []);
+    let _ = conn.execute("ALTER TABLE projects ADD COLUMN concept_how TEXT NOT NULL DEFAULT ''", []);
+    let _ = conn.execute("ALTER TABLE projects ADD COLUMN concept_when TEXT NOT NULL DEFAULT ''", []);
+    let _ = conn.execute("ALTER TABLE projects ADD COLUMN concept_where TEXT NOT NULL DEFAULT ''", []);
+    let _ = conn.execute("ALTER TABLE projects ADD COLUMN concept_with_what TEXT NOT NULL DEFAULT ''", []);
+
     Ok(conn)
 }
 

@@ -112,6 +112,15 @@ pub async fn project_update(
     path: Option<String>,
     status: Option<String>,
     tags: Option<String>,
+    description: Option<String>,
+    color: Option<String>,
+    icon: Option<String>,
+    concept_what: Option<String>,
+    concept_why: Option<String>,
+    concept_how: Option<String>,
+    concept_when: Option<String>,
+    concept_where: Option<String>,
+    concept_with_what: Option<String>,
 ) -> Result<Project, String> {
     let canonical_path = if let Some(path) = path {
         let resolved = std::fs::canonicalize(&path).map_err(|error| format!("Invalid project folder: {error}"))?;
@@ -123,7 +132,21 @@ pub async fn project_update(
         None
     };
     let conn = state.db.lock().unwrap();
-    queries::update_project(&conn, id, name.as_deref(), canonical_path.as_deref(), status.as_deref(), tags.as_deref()).map_err(|e| e.to_string())?;
+    queries::update_project_fields(&conn, id, queries::ProjectUpdateFields {
+        name: name.as_deref(),
+        path: canonical_path.as_deref(),
+        status: status.as_deref(),
+        tags: tags.as_deref(),
+        description: description.as_deref(),
+        color: color.as_deref(),
+        icon: icon.as_deref(),
+        concept_what: concept_what.as_deref(),
+        concept_why: concept_why.as_deref(),
+        concept_how: concept_how.as_deref(),
+        concept_when: concept_when.as_deref(),
+        concept_where: concept_where.as_deref(),
+        concept_with_what: concept_with_what.as_deref(),
+    }).map_err(|e| e.to_string())?;
     queries::get_project_by_id(&conn, id).map_err(|e| e.to_string())
 }
 

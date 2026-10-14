@@ -150,10 +150,23 @@ export function ProjectDetail() {
         </div>
         <aside className="project-about">
           <h2>About this project</h2>
-          <p>
-            Your local files, documentation, and development history in one
-            workspace.
-          </p>
+          {project.description ? (
+            <p className="about-description">{project.description}</p>
+          ) : (
+            <p className="about-description quiet">
+              Your local files, documentation, and development history in one workspace.
+            </p>
+          )}
+          {(project.concept_what || project.concept_why || project.concept_how) && (
+            <div className="about-concept">
+              {project.concept_what && <div><strong>What</strong><span>{project.concept_what}</span></div>}
+              {project.concept_why && <div><strong>Why</strong><span>{project.concept_why}</span></div>}
+              {project.concept_how && <div><strong>How</strong><span>{project.concept_how}</span></div>}
+              {project.concept_when && <div><strong>When</strong><span>{project.concept_when}</span></div>}
+              {project.concept_where && <div><strong>Where</strong><span>{project.concept_where}</span></div>}
+              {project.concept_with_what && <div><strong>With</strong><span>{project.concept_with_what}</span></div>}
+            </div>
+          )}
           <div className="about-item">
             <GitBranch size={14} />
             <span>{project.git?.branch ?? "Local folder"}</span>

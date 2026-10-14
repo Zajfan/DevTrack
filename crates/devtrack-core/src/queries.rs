@@ -5,14 +5,11 @@ use git2::Repository;
 use rusqlite::{params, Connection, Result, OptionalExtension};
 use std::collections::HashMap;
 
-pub fn get_all_projects(conn: &Connection, show_archived: bool) -> Result<Vec<Project>> {
-    let sql = if show_archived {
-        "SELECT id, name, path, status, tags, last_accessed, created_at FROM projects"
-    } else {
-        "SELECT id, name, path, status, tags, last_accessed, created_at FROM projects WHERE status != 'Archived'"
-    };
-    let mut stmt = conn.prepare(sql)?;
-    let rows = stmt.query_map([], |row| Ok(Project {
+const PROJECT_COLUMNS: &str = "id, name, path, status, tags, last_accessed, created_at, \
+    description, color, icon, concept_what, concept_why, concept_how, concept_when, concept_where, concept_with_what";
+
+fn project_from_row(row: &rusqlite::Row) -> rusqlite::Result<Project> {
+    Ok(Project {
         id: row.get(0)?,
         name: row.get(1)?,
         path: row.get(2)?,
@@ -20,24 +17,32 @@ pub fn get_all_projects(conn: &Connection, show_archived: bool) -> Result<Vec<Pr
         tags: row.get(4)?,
         last_accessed: row.get(5)?,
         created_at: row.get(6)?,
-    }))?;
+        description: row.get::<_, Option<String>>(7)?.unwrap_or_default(),
+        color: row.get::<_, Option<String>>(8)?.unwrap_or_default(),
+        icon: row.get::<_, Option<String>>(9)?.unwrap_or_default(),
+        concept_what: row.get::<_, Option<String>>(10)?.unwrap_or_default(),
+        concept_why: row.get::<_, Option<String>>(11)?.unwrap_or_default(),
+        concept_how: row.get::<_, Option<String>>(12)?.unwrap_or_default(),
+        concept_when: row.get::<_, Option<String>>(13)?.unwrap_or_default(),
+        concept_where: row.get::<_, Option<String>>(14)?.unwrap_or_default(),
+        concept_with_what: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
+    })
+}
+
+pub fn get_all_projects(conn: &Connection, show_archived: bool) -> Result<Vec<Project>> {
+    let sql = if show_archived {
+        format!("SELECT {} FROM projects", PROJECT_COLUMNS)
+    } else {
+        format!("SELECT {} FROM projects WHERE status != 'Archived'", PROJECT_COLUMNS)
+    };
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map([], project_from_row)?;
     rows.collect()
 }
 
 pub fn get_project_by_id(conn: &Connection, id: i64) -> Result<Project> {
-    conn.query_row(
-        "SELECT id, name, path, status, tags, last_accessed, created_at FROM projects WHERE id = ?1",
-        params![id],
-        |row| Ok(Project {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            path: row.get(2)?,
-            status: row.get(3)?,
-            tags: row.get(4)?,
-            last_accessed: row.get(5)?,
-            created_at: row.get(6)?,
-        }),
-    )
+    let sql = format!("SELECT {} FROM projects WHERE id = ?1", PROJECT_COLUMNS);
+    conn.query_row(&sql, params![id], project_from_row)
 }
 
 pub fn create_project(conn: &Connection, name: &str, path: &str) -> Result<i64> {
@@ -48,6 +53,22 @@ pub fn create_project(conn: &Connection, name: &str, path: &str) -> Result<i64> 
     Ok(conn.last_insert_rowid())
 }
 
+pub struct ProjectUpdateFields<'a> {
+    pub name: Option<&'a str>,
+    pub path: Option<&'a str>,
+    pub status: Option<&'a str>,
+    pub tags: Option<&'a str>,
+    pub description: Option<&'a str>,
+    pub color: Option<&'a str>,
+    pub icon: Option<&'a str>,
+    pub concept_what: Option<&'a str>,
+    pub concept_why: Option<&'a str>,
+    pub concept_how: Option<&'a str>,
+    pub concept_when: Option<&'a str>,
+    pub concept_where: Option<&'a str>,
+    pub concept_with_what: Option<&'a str>,
+}
+
 pub fn update_project(
     conn: &Connection,
     id: i64,
@@ -56,34 +77,41 @@ pub fn update_project(
     status: Option<&str>,
     tags: Option<&str>,
 ) -> Result<()> {
-    let mut updates = Vec::new();
+    update_project_fields(conn, id, ProjectUpdateFields {
+        name, path, status, tags,
+        description: None, color: None, icon: None,
+        concept_what: None, concept_why: None, concept_how: None,
+        concept_when: None, concept_where: None, concept_with_what: None,
+    })
+}
+
+pub fn update_project_fields(conn: &Connection, id: i64, f: ProjectUpdateFields) -> Result<()> {
+    let mut updates: Vec<&str> = Vec::new();
     let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
-    if let Some(value) = name {
-        updates.push("name = ?");
-        params_vec.push(Box::new(value.to_string()));
+    macro_rules! field {
+        ($opt:expr, $col:literal) => {
+            if let Some(v) = $opt { updates.push($col); params_vec.push(Box::new(v.to_string())); }
+        };
     }
-    if let Some(value) = path {
-        updates.push("path = ?");
-        params_vec.push(Box::new(value.to_string()));
-    }
-    
-    if let Some(s) = status {
-        updates.push("status = ?");
-        params_vec.push(Box::new(s.to_string()));
-    }
-    if let Some(t) = tags {
-        updates.push("tags = ?");
-        params_vec.push(Box::new(t.to_string()));
-    }
-    
-    if updates.is_empty() {
-        return Ok(());
-    }
-    
+    field!(f.name,             "name = ?");
+    field!(f.path,             "path = ?");
+    field!(f.status,           "status = ?");
+    field!(f.tags,             "tags = ?");
+    field!(f.description,      "description = ?");
+    field!(f.color,            "color = ?");
+    field!(f.icon,             "icon = ?");
+    field!(f.concept_what,     "concept_what = ?");
+    field!(f.concept_why,      "concept_why = ?");
+    field!(f.concept_how,      "concept_how = ?");
+    field!(f.concept_when,     "concept_when = ?");
+    field!(f.concept_where,    "concept_where = ?");
+    field!(f.concept_with_what,"concept_with_what = ?");
+
+    if updates.is_empty() { return Ok(()); }
+
     let sql = format!("UPDATE projects SET {} WHERE id = ?", updates.join(", "));
     params_vec.push(Box::new(id));
-    
     let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|b| b.as_ref()).collect();
     conn.execute(&sql, params_refs.as_slice())?;
     Ok(())
