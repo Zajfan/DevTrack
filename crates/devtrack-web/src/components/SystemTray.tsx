@@ -79,7 +79,10 @@ export function useSystemTray() {
       trayInstance = tray;
     };
 
-    setupTray();
+    setupTray().catch((err) => {
+      // Tray is unavailable in headless CI and some environments; non-fatal.
+      console.error('SystemTray setup failed:', err);
+    });
 
     return () => {
       if (tray) {
