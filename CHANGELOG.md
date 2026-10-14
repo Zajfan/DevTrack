@@ -5,9 +5,30 @@ All notable changes to DevTrack will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] — Draft candidate
+## [Unreleased]
 
-**Not yet published.** The release stays a draft until Windows, macOS, Linux, iOS, Android, and HarmonyOS packages are ready and verified. Native iOS and HarmonyOS remain pending. See [release notes](docs/releases/1.0.0.md) and [verification evidence](docs/releases/1.0-verification.md).
+---
+
+## [1.0.1] — 2026-10-14
+
+### Added
+
+- **Desktop Verification CI** — GitHub Actions workflow running native workflow checks (schema migration, project CRUD, file/README, Git history, task version editing, Unicode notes, restart persistence, repository relocation) and production package builds across Ubuntu 22.04, Windows Server 2022, macOS 15 Intel and macOS 15 Apple Silicon. All jobs verified green on run `38496426371`.
+
+### Fixed
+
+- Project list now shows a native directory picker for editing a project's registered path, with validation that the new path exists before saving.
+- Tray plugin initialisation failure in headless environments is now non-fatal; the app continues without a tray icon rather than logging an unhandled rejection.
+
+### Changed
+
+- CHANGELOG and README updated to remove stale C++23/Electron references; mobile distribution accurately described as a self-signed Android APK.
+
+---
+
+## [1.0.0] — 2026-10-02
+
+**Desktop verified** on Windows, macOS Intel, macOS Apple Silicon and Linux. Native iOS and HarmonyOS remain pending. See [release notes](docs/releases/1.0.0.md) and [verification evidence](docs/releases/1.0-verification.md).
 
 ### Added
 
@@ -63,5 +84,7 @@ Initial public release.
 - REST API, Material-UI, dark/light theme
 - Cross-platform (Windows, macOS, Linux)
 
-[1.0.0]: https://github.com/Zajfan/DevTrack/compare/v0.1.0...v1.0.0-draft.1
+[Unreleased]: https://github.com/Zajfan/DevTrack/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/Zajfan/DevTrack/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/Zajfan/DevTrack/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/Zajfan/DevTrack/releases/tag/v0.1.0
