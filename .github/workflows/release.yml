@@ -143,12 +143,12 @@ jobs:
       - name: Download release package
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_ID: ${{ needs.draft.outputs.release_id }}
+          RELEASE_TAG: ${{ needs.draft.outputs.tag }}
           ASSET_SUFFIX: ${{ matrix.asset_suffix }}
         shell: bash
         run: |
           mkdir -p package
-          asset=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" --jq ".assets[] | select(.name | endswith(\"$ASSET_SUFFIX\")) | [.id, .name] | @tsv" | head -n 1)
+          asset=$(gh release view "$RELEASE_TAG" --json assets --jq ".assets[] | select(.name | endswith(\"$ASSET_SUFFIX\")) | [.id, .name] | @tsv" | head -n 1)
           test -n "$asset"
           asset_id=${asset%%$'\t'*}
           asset_name=${asset#*$'\t'}
