@@ -92,7 +92,7 @@ DevTrack/
 │   ├── devtrack-api/          # REST API server (binary: devtrack-api)
 │   ├── devtrack-web/          # React + TypeScript + Vite frontend
 │   └── devtrack-desktop/      # Tauri v2 desktop app
-├── .github/workflows/         # Build, release, web-deploy CI
+├── .github/workflows/         # Build, release and verification CI
 └── docs/                      # Specs and design documents
 ```
 
@@ -153,11 +153,11 @@ curl "http://localhost:8080/reports/time?period=week"
 | Reports | `GET /reports/time?period=today\|week\|all` |
 | Dashboard | `GET /dashboard/summary` |
 
-### Web (mobile fallback)
+### Web frontend (development)
 
 ```bash
 cd crates/devtrack-web && npm run dev    # dev server on :3000
-npm run build                            # PWA build with service worker
+npm run build                            # production build (used by desktop)
 ```
 
 ## Data & Backups
@@ -191,7 +191,7 @@ No paid developer programs required — everything ships free:
 | Linux | `.deb`, `.rpm`, `.AppImage` | GitHub Releases, AUR (planned) |
 | macOS | `.dmg`, `.app` | GitHub Releases, Homebrew (planned) — unsigned, see [Gatekeeper notes](docs/GATEKEEPER_WORKAROUND.md) |
 | Windows | `.msi`, `.exe` | GitHub Releases, Scoop/Chocolatey (planned) |
-| Mobile | PWA | GitHub Pages |
+| Android | `.apk` (self-signed, Android 8+) | GitHub Releases — native iOS and HarmonyOS pending |
 
 ## Development
 

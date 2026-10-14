@@ -5,148 +5,63 @@ All notable changes to DevTrack will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] — Draft candidate
+
+**Not yet published.** The release stays a draft until Windows, macOS, Linux, iOS, Android, and HarmonyOS packages are ready and verified. Native iOS and HarmonyOS remain pending. See [release notes](docs/releases/1.0.0.md) and [verification evidence](docs/releases/1.0-verification.md).
+
+### Added
+
+- **Mobile companion** — dark-themed Android app (Android 8+) that manages projects, tasks, version plans and notes offline without requiring source folders or a localhost server. Reads public GitHub issues and completed commits with meaningful-change, file and function filters. Signed APK with a stable self-generated key.
+- **Offline-first** — companion works fully offline; GitHub data cached on last refresh. Desktop GitHub history and issues also cached per project.
+- **Project repository history** — each project page shows its files with read-only source preview and a README, plus completed-work history from GitHub with feature, fix, module, file, function and author filters.
+- **Planned work tab** — combines local tasks and open GitHub issues by target version, with numeric version grouping and prerelease version support (`1.0`, `0.1.0-alpha.1`, etc.). GitHub issues link back to GitHub; they are read-only in DevTrack.
+- **Clickable project tags** — clicking a tag shows every project with that exact tag, including archived ones.
+- **Global task view** — All Tasks across all projects, sortable and filterable by source, status, project and target version.
+- **Git-based data sync** — optional synchronization of the local database to a private GitHub repository.
+- **Quick Commit** — from the workspace, stage, commit and push without leaving DevTrack; refreshes completed history after push.
+- **Due-date intelligence** — overdue and approaching tasks surface automatically in the workspace overview.
+- **Consistent workspace counts** — Overview, project cards, All Tasks and Reports share one view of local tasks, cached GitHub issues and meaningful commit evidence.
+- **Desktop verification harness** — `--features desktop-test` build drives the real native webview and Rust backend through WebDriver; covers schema migration, project CRUD, file/README preview, Git history, task version editing, Unicode notes, persistence across restarts, and repository relocation.
+- **Desktop Verification CI** — GitHub Actions workflow running the harness on Ubuntu, Windows Server, macOS Apple Silicon and macOS Intel; separate jobs build and smoke-test production installers.
 
 ### Fixed
 
-- Overview, project cards, All Tasks and Reports now use one workspace view of local tasks, cached GitHub issues and meaningful completed commit evidence.
-- Local tasks remain available while remote work is offline; repository fetching happens on explicit refresh, with cached evidence retained.
-- Global task lists can filter and sort by source, status, project and target version, including alpha versions and commit file/function evidence.
-- Completing tasks from All Tasks updates the Overview and Reports. GitHub issues and commit evidence stay read-only.
-- Reports now show planned/completed work separately from timer-based hours, so untracked work is visible without inventing time.
-- Project open-work counts include cached GitHub issues, and Quick Commit refreshes completed history after pushing.
-
-
-### Added
-
-**TIER 2 Features - Task Dependencies (v0.4.0)**
-
-- task_dependencies table with support for multiple dependency types
-- TaskDependencyRepository with full CRUD operations
-- Circular dependency detection using depth-first search algorithm
-- Three dependency types: Blocks, Blocked By, Relates To
-- DependencyManager component (268 lines) for managing task relationships
-- Autocomplete search for selecting dependent tasks
-- Visual dependency indicators with color-coded chips
-- Integration in TaskDetail view with Dependencies button
-- Dependency display with task titles and status
-- IPC handlers for all dependency operations:
-  - create, delete, findByTaskId, findByTaskIdWithDetails
-  - getBlockingTasks, getBlockedTasks, hasBlockingDependencies
-- Type-safe preload bridge for dependency operations
-- Database indexes for performance (task_id, depends_on_task_id)
-
-**TIER 2 Features - Custom Fields System (v0.3.0)**
-
-- Custom field definitions with 6 field types: Text, Number, Date, Checkbox, Select, MultiSelect
-- CustomFieldManager component for managing project-specific custom fields
-- CustomFieldInput component for rendering appropriate input widgets per field type
-- Custom field integration in task create/edit dialogs
-- Custom field value storage and retrieval via IPC
-- Required field support with validation
-- Select/MultiSelect fields with JSON options storage
-- Custom Fields button in ProjectDetail view
-- Full CRUD operations for custom fields and task values
-- Documentation: `docs/CUSTOM_FIELDS_GUIDE.md`
-
-**TIER 2 Features - File Attachments (v0.2.0)**
-
-- Native file upload with multi-file selection support
-- File storage in userData/attachments directory
-- MIME type detection based on file extensions
-- Open attachments with system default application
-- Delete attachments with automatic disk cleanup
-- File metadata display (filename, size, uploader, upload date)
-- File size formatting (B/KB/MB)
-- File type icons (Image, PDF, generic File)
-- Integration in TaskDetail view with empty state
-
-**TIER 2 Features - Labels and Tags**
-
-- LabelManager component for label CRUD operations
-- Color-coded label system with visual indicators
-- Click-to-toggle label assignment on tasks
-- Label filtering dropdown in Tasks view
-- Label chips on task cards in Board and List views
-- Label display in TaskDetail view
-- Sample labels included in seed data (Bug, Feature, Documentation, etc.)
-
-**Database Enhancements**
-
-- `custom_fields` table with JSON options storage
-- `task_custom_values` junction table for custom field values
-- `labels` and `task_labels` tables for tagging system
-- `attachments` table with file metadata
-- CASCADE delete for related data integrity
-
-**IPC Handlers**
-
-- `customField:create`, `findByProjectId`, `update`, `delete` - Field definition management
-- `customField:setTaskValue`, `getTaskValue`, `getTaskValues`, `deleteTaskValue` - Task value operations
-- `label:create`, `findByProjectId`, `findByTaskId`, `update`, `delete` - Label management
-- `label:addToTask`, `removeFromTask` - Label assignment
-- `file:upload`, `file:open`, `file:deleteWithCleanup` - File operations
-
-**UI Components**
-
-- CustomFieldManager dialog (347 lines) - Full CRUD UI for custom fields
-- CustomFieldInput component (135 lines) - Polymorphic input rendering
-- LabelManager dialog (262 lines) - Label CRUD with color picker
-- File attachment section in TaskDetail with upload/download/delete
-
-**Developer Experience**
-
-- Type-safe preload bridge for all new IPC operations
-- TypeScript interfaces for CustomField, TaskCustomValue
-- Comprehensive custom fields documentation
-- Updated feature roadmap tracking
+- Overview, project cards, All Tasks and Reports now use one consistent workspace view rather than separate queries that could disagree.
+- Local tasks remain available while remote work is offline; repository fetching happens on explicit refresh with cached evidence retained.
+- Completing tasks from All Tasks correctly updates the Overview and Reports.
+- Reports show planned/completed work separately from timer-based hours.
+- Project open-work counts include cached GitHub issues.
+- Linux AppImage repaired to remove bundled Wayland libraries that conflicted with host graphics stacks (Fedora, others).
+- Android navigation bar theme scoped to supported API levels.
+- Android system bars and dialogs use dark mode throughout.
 
 ### Changed
 
-- Tasks.tsx enhanced with custom field state management
-- TaskDetail.tsx enhanced with file attachment UI
-- ProjectDetail.tsx enhanced with Custom Fields button
-- Preload script updated with new IPC method signatures
-- Repository pattern extended for custom fields, labels, attachments
+- Rewritten from C++23/Electron to **Rust + Tauri v2 + React + TypeScript**. The entire backend is a single Rust binary embedding SQLite; no localhost server is required.
+- Data stored in `~/.local/share/devtrack/projects.db` (SQLite WAL mode). Tasks without a target version appear as Unscheduled on upgrade.
+- Platform menu bar (File/Edit/View/Window/Help), system tray with live timer, global shortcut (`Ctrl+Shift+T`), native file dialogs and notifications.
+- Keyboard-first navigation: `Ctrl+1–7` sections, `Ctrl+K` search, `Ctrl+,` settings.
+- GitHub milestones supply issue target versions; issues are read-only and link to GitHub for editing.
+- Manual JSON transfer between desktop and companion. Desktop exports seed the companion preserving completed status and target versions; notes and repository URLs are not yet included. Companion backups cannot yet be imported into desktop. No automatic phone/desktop synchronization.
 
-### Technical Improvements
+### Known limitations
 
-- JSON serialization for Select/MultiSelect options
-- File storage with timestamp-based unique naming
-- Comma-separated value storage for MultiSelect fields
-- Type guards for field type handling
-- useEffect hooks for loading custom fields when dialogs open
+- Windows and macOS packages have no publisher code-signing certificate; unknown-publisher prompts may appear on first launch.
+- Native iOS companion is pending (no paid Apple membership).
+- Native HarmonyOS companion requires a separate port, SDK and signing setup.
+- Desktop/companion transfer omits notes and repository URLs; companion backups cannot be imported into desktop.
 
 ---
 
-## [0.1.0] - Previous Releases
+## [0.1.0] — 2024-11-14
 
-### Added
+Initial public release.
 
-- C++23 backend architecture
+- C++23 backend with CMake build system
 - Electron + React + TypeScript frontend
-- SQLite database with project, task, and concept tables
-- 5W1H conceptual framework integration
-- REST API design
-- Material-UI component library
-- Dark/Light theme support
-- Cross-platform support (Windows, macOS, Linux)
+- SQLite database with project, task and concept tables
+- REST API, Material-UI, dark/light theme
+- Cross-platform (Windows, macOS, Linux)
 
-### Changed
-
-- Migrated from C# MAUI to C++23 + Electron architecture
-- Redesigned database schema for better performance
-- Improved project structure for professional development
-
-## [0.1.0] - 2024-11-14
-
-### Added
-
-- Initial project architecture
-- Backend structure with CMake build system
-- Frontend structure with Electron
-- Comprehensive documentation
-- Build scripts and CI/CD workflows
-
-[Unreleased]: https://github.com/The-No-Hands-Company/DevTrack/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/The-No-Hands-Company/DevTrack/releases/tag/v0.1.0
+[1.0.0]: https://github.com/Zajfan/DevTrack/compare/v0.1.0...v1.0.0-draft.1
+[0.1.0]: https://github.com/Zajfan/DevTrack/releases/tag/v0.1.0
