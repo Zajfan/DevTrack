@@ -93,14 +93,23 @@ pub async fn project_create(state: State<'_, AppState>, name: String, path: Stri
     let conn = state.db.lock().unwrap();
     let abs_path = std::fs::canonicalize(&path).map_err(|e| e.to_string())?.to_string_lossy().into_owned();
     let id = queries::create_project(&conn, &name, &abs_path).map_err(|e| e.to_string())?;
-    Ok(Project { 
-        id, 
-        name, 
-        path: abs_path, 
-        status: "Active".into(), 
-        tags: String::new(), 
-        last_accessed: None, 
-        created_at: chrono::Utc::now().to_rfc3339() 
+    Ok(Project {
+        id,
+        name,
+        path: abs_path,
+        status: "Active".into(),
+        tags: String::new(),
+        last_accessed: None,
+        created_at: chrono::Utc::now().to_rfc3339(),
+        description: String::new(),
+        color: String::new(),
+        icon: String::new(),
+        concept_what: String::new(),
+        concept_why: String::new(),
+        concept_how: String::new(),
+        concept_when: String::new(),
+        concept_where: String::new(),
+        concept_with_what: String::new(),
     })
 }
 

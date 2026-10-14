@@ -148,6 +148,15 @@ async fn create_project(State(state): State<Arc<AppState>>, Json(payload): Json<
             tags: String::new(),
             last_accessed: None,
             created_at: Utc::now().to_rfc3339(),
+            description: String::new(),
+            color: String::new(),
+            icon: String::new(),
+            concept_what: String::new(),
+            concept_why: String::new(),
+            concept_how: String::new(),
+            concept_when: String::new(),
+            concept_where: String::new(),
+            concept_with_what: String::new(),
         };
         Ok::<_, anyhow::Error>(project)
     }).await;
