@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Two-way desktop/companion transfer** — desktop exports projects, tasks, notes and inferred GitHub repository slugs in the companion JSON format (`devtrack-companion` v1). Companion backups can now be imported back into the desktop via Settings → Mobile: a dry-run preview lists which projects and tasks would be updated or created, a recovery backup is written to the data directory before any changes are applied, and projects originally exported from the desktop are matched back to their records on round-trip import. Completed task status and target versions are preserved through the full round-trip.
+
 ---
 
 ## [1.0.1] — 2026-10-14
