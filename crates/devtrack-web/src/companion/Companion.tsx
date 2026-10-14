@@ -203,7 +203,7 @@ export function Companion() {
         <button className="transfer-card" disabled={needsRecovery} onClick={exportBackup}><span className="project-icon"><ArrowUpFromLine/></span><span><strong>Export backup</strong><small>Your companion projects, tasks and notes.</small></span><ChevronRight size={18}/></button>
         <label className="transfer-card"><span className="project-icon green"><ArrowDownToLine/></span><span><strong>Import JSON file</strong><small>Restore a companion backup or start from a desktop task export.</small></span><ChevronRight size={18}/><input aria-label="Import JSON file" type="file" accept="application/json,.json" onChange={e=>{void importFile(e.target.files?.[0]);e.target.value='';}}/></label>
         <div className="transfer-info"><ShieldCheck size={22}/><div><strong>Your current data stays until you confirm</strong><p>The whole file is validated before replacement. Export a backup first.</p></div></div>
-        <p className="quiet">Desktop exports currently omit notes and repository URLs. Set the GitHub repository after importing. Companion backups cannot yet be imported into the desktop app; keep the desktop copy unchanged.</p>
+        <p className="quiet">Desktop exports include your notes and GitHub repository URLs. To import a companion backup back into the desktop app, use Settings → Mobile on the desktop.</p>
         <p className="quiet">DevTrack companion 1.0 · Android release candidate</p>
       </>}
     </main>

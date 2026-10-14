@@ -512,6 +512,227 @@ pub async fn app_get_data_dir(state: State<'_, AppState>) -> Result<String, Stri
     Ok(state.config.data_dir.to_string_lossy().into_owned())
 }
 
+#[derive(serde::Serialize)]
+pub struct CompanionImportResult {
+    pub projects_updated: usize,
+    pub projects_created: usize,
+    pub tasks_updated: usize,
+    pub tasks_created: usize,
+    pub backup_path: Option<String>,
+    /// Human-readable list of project names (for the preview dialog)
+    pub preview_projects: Vec<String>,
+}
+
+/// Export all non-archived projects and tasks in the `devtrack-companion` v1
+/// format (includes notes and inferred GitHub repository slugs).
+#[tauri::command]
+pub async fn companion_export(state: State<'_, AppState>) -> Result<String, String> {
+    #[derive(serde::Serialize)]
+    struct CProject { id: String, name: String, repository: String, tags: String, notes: String }
+    #[derive(serde::Serialize)]
+    struct CTask { id: String, project_id: String, title: String, description: String, status: String, priority: String, target_version: String, updated_at: String }
+    #[derive(serde::Serialize)]
+    struct CExport { format: &'static str, version: u32, projects: Vec<CProject>, tasks: Vec<CTask> }
+
+    let conn = state.db.lock().unwrap();
+    let projects = queries::get_all_projects(&conn, false).map_err(|e| e.to_string())?;
+
+    let mut c_projects = Vec::new();
+    let mut c_tasks = Vec::new();
+
+    for project in &projects {
+        let repository = devtrack_core::get_github_repository(&project.path).unwrap_or_default();
+        let notes_path = queries::get_notes_path(&state.config, &project.name);
+        let notes = std::fs::read_to_string(&notes_path).unwrap_or_default();
+        c_projects.push(CProject {
+            id: format!("desktop:{}", project.id),
+            name: project.name.clone(),
+            repository,
+            tags: project.tags.clone(),
+            notes,
+        });
+        let tasks = queries::get_tasks_for_project(&conn, project.id).map_err(|e| e.to_string())?;
+        for task in tasks {
+            let status = if task.status == "Done" || task.status == "Completed" { "done" } else { "todo" };
+            let priority = task.priority.to_lowercase();
+            let priority = if priority == "medium" { "normal" } else { &priority }.to_string();
+            c_tasks.push(CTask {
+                id: format!("desktop:{}", task.id),
+                project_id: format!("desktop:{}", project.id),
+                title: task.title,
+                description: task.description,
+                status: status.to_string(),
+                priority,
+                target_version: task.target_version,
+                updated_at: task.created_at,
+            });
+        }
+    }
+
+    let export = CExport { format: "devtrack-companion", version: 1, projects: c_projects, tasks: c_tasks };
+    let json = serde_json::to_string_pretty(&export).map_err(|e| e.to_string())?;
+    let export_path = state.config.data_dir.join(format!(
+        "devtrack-companion-export-{}.json",
+        Local::now().format("%Y%m%d_%H%M%S"),
+    ));
+    std::fs::write(&export_path, &json).map_err(|e| e.to_string())?;
+    Ok(export_path.to_string_lossy().into_owned())
+}
+
+/// Import a `devtrack-companion` v1 backup into the desktop database.
+/// When `dry_run` is true the file is validated and a preview is returned but
+/// nothing is written.  When false a recovery backup is created first, then
+/// the changes are applied.
+#[tauri::command]
+pub async fn companion_import(state: State<'_, AppState>, path: String, dry_run: bool) -> Result<CompanionImportResult, String> {
+    #[derive(serde::Deserialize)]
+    struct IProject { id: String, name: String, #[serde(default)] repository: String, #[serde(default)] tags: String, #[serde(default)] notes: String }
+    #[derive(serde::Deserialize)]
+    struct ITask { id: String, project_id: String, title: String, #[serde(default)] description: String, #[serde(default)] status: String, #[serde(default)] priority: String, #[serde(default)] target_version: String }
+    #[derive(serde::Deserialize)]
+    struct IData { format: Option<String>, version: Option<u32>, projects: Vec<IProject>, tasks: Vec<ITask> }
+
+    let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    if content.len() > 16 * 1024 * 1024 { return Err("Backup is larger than 16 MB.".to_string()); }
+
+    let incoming: IData = serde_json::from_str(&content).map_err(|e| format!("Invalid JSON: {}", e))?;
+    if let Some(ref fmt) = incoming.format {
+        if fmt != "devtrack-companion" { return Err("Unrecognized backup format.".to_string()); }
+    }
+    if let Some(ver) = incoming.version {
+        if ver != 1 { return Err("Unsupported backup version.".to_string()); }
+    }
+    if incoming.projects.len() > 10000 || incoming.tasks.len() > 100000 {
+        return Err("Backup exceeds allowed size limits.".to_string());
+    }
+    for p in &incoming.projects {
+        if p.name.trim().is_empty() { return Err("A project has an empty name.".to_string()); }
+        if p.id.is_empty() { return Err("A project has an empty id.".to_string()); }
+    }
+    for t in &incoming.tasks {
+        if t.title.trim().is_empty() { return Err("A task has an empty title.".to_string()); }
+    }
+
+    let conn = state.db.lock().unwrap();
+
+    // Classify projects
+    let mut projects_updated = 0usize;
+    let mut projects_created = 0usize;
+    let mut preview_projects: Vec<String> = Vec::new();
+    // companion project id → desktop project id (populated during apply)
+    let mut project_id_map: std::collections::HashMap<String, i64> = Default::default();
+
+    for p in &incoming.projects {
+        if let Some(desktop_id) = desktop_id_from(&p.id) {
+            if let Ok(existing) = queries::get_project_by_id(&conn, desktop_id) {
+                project_id_map.insert(p.id.clone(), desktop_id);
+                preview_projects.push(format!("{} (update)", existing.name));
+                projects_updated += 1;
+                continue;
+            }
+        }
+        preview_projects.push(format!("{} (new)", p.name.trim()));
+        projects_created += 1;
+    }
+
+    // Classify tasks
+    let mut tasks_updated = 0usize;
+    let mut tasks_created = 0usize;
+    for t in &incoming.tasks {
+        if let Some(desktop_id) = desktop_id_from(&t.id) {
+            if queries::get_task_by_id(&conn, desktop_id).is_ok() {
+                tasks_updated += 1;
+                continue;
+            }
+        }
+        tasks_created += 1;
+    }
+
+    if dry_run {
+        return Ok(CompanionImportResult { projects_updated, projects_created, tasks_updated, tasks_created, backup_path: None, preview_projects });
+    }
+
+    // Recovery backup
+    let backup_path = state.config.data_dir.join(format!(
+        "projects_pre-companion-import_{}.db.bak",
+        Local::now().format("%Y%m%d_%H%M%S"),
+    ));
+    std::fs::copy(&state.config.db_path, &backup_path).map_err(|e| e.to_string())?;
+
+    // Apply projects (rebuild map including newly created)
+    project_id_map.clear();
+    for p in &incoming.projects {
+        let desktop_id = if let Some(id) = desktop_id_from(&p.id) {
+            if let Ok(_existing) = queries::get_project_by_id(&conn, id) {
+                queries::update_project(&conn, id, None, None, None, Some(&p.tags)).map_err(|e| e.to_string())?;
+                if !p.notes.is_empty() {
+                    let proj = queries::get_project_by_id(&conn, id).map_err(|e| e.to_string())?;
+                    queries::write_notes(&state.config, &proj.name, &p.notes).map_err(|e| e.to_string())?;
+                }
+                id
+            } else {
+                create_companion_project_inner(&conn, &state.config, &p.name, &p.tags, &p.notes)?
+            }
+        } else {
+            create_companion_project_inner(&conn, &state.config, &p.name, &p.tags, &p.notes)?
+        };
+        project_id_map.insert(p.id.clone(), desktop_id);
+    }
+
+    // Apply tasks
+    tasks_updated = 0;
+    tasks_created = 0;
+    for t in &incoming.tasks {
+        let project_desktop_id = match project_id_map.get(&t.project_id) { Some(&id) => id, None => continue };
+        let status = if t.status == "done" || t.status == "completed" { "Done" } else { "Todo" };
+        let priority = normalize_priority(&t.priority);
+        if let Some(desktop_id) = desktop_id_from(&t.id) {
+            if queries::get_task_by_id(&conn, desktop_id).is_ok() {
+                queries::update_task_versioned(&conn, desktop_id, Some(t.title.trim()), Some(&t.description), Some(status), Some(priority), None, Some(&t.target_version)).map_err(|e| e.to_string())?;
+                tasks_updated += 1;
+                continue;
+            }
+        }
+        let new_id = queries::create_task_versioned(&conn, project_desktop_id, t.title.trim(), Some(&t.description), Some(priority), None, Some(&t.target_version)).map_err(|e| e.to_string())?;
+        if status == "Done" {
+            let _ = conn.execute("UPDATE tasks SET status='Done' WHERE id=?1", rusqlite::params![new_id]);
+        }
+        tasks_created += 1;
+    }
+
+    Ok(CompanionImportResult { projects_updated, projects_created, tasks_updated, tasks_created, backup_path: Some(backup_path.to_string_lossy().into_owned()), preview_projects })
+}
+
+fn desktop_id_from(companion_id: &str) -> Option<i64> {
+    companion_id.strip_prefix("desktop:").and_then(|s| s.parse().ok())
+}
+
+fn normalize_priority(p: &str) -> &'static str {
+    match p.to_lowercase().as_str() {
+        "high" => "High",
+        "low" => "Low",
+        _ => "Normal",
+    }
+}
+
+fn create_companion_project_inner(
+    conn: &rusqlite::Connection,
+    config: &devtrack_core::Config,
+    name: &str,
+    tags: &str,
+    notes: &str,
+) -> Result<i64, String> {
+    let name = name.trim().to_string();
+    let new_id = queries::create_project(conn, &name, &name).map_err(|e| e.to_string())?;
+    if !tags.is_empty() {
+        queries::update_project(conn, new_id, None, None, None, Some(tags)).map_err(|e| e.to_string())?;
+    }
+    if !notes.is_empty() {
+        queries::write_notes(config, &name, notes).map_err(|e| e.to_string())?;
+    }
+    Ok(new_id)
+}
+
 #[tauri::command]
 pub async fn show_window(app: AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {

@@ -23,6 +23,15 @@ import type {
 
 const i = <T,>(command: string, args?: Record<string, unknown>): Promise<T> => invoke<T>(command, args);
 
+export interface CompanionImportResult {
+  projects_updated: number;
+  projects_created: number;
+  tasks_updated: number;
+  tasks_created: number;
+  backup_path: string | null;
+  preview_projects: string[];
+}
+
 export const api = {
   projects: {
     list: (archived?: boolean) => i<Project[]>('projects_list', { archived: archived ?? false }),
@@ -94,9 +103,14 @@ export const api = {
     importData: (path: string) => i<void>('app_import_data', { path }),
     getDataDir: () => i<string>('app_get_data_dir'),
   },
+  companion: {
+    export: () => i<string>('companion_export'),
+    import: (path: string, dryRun: boolean) => i<CompanionImportResult>('companion_import', { path, dryRun }),
+  },
 };
 
 export type {
+  CompanionImportResult,
   Project,
   GitInfo,
   Task,

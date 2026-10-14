@@ -201,3 +201,23 @@ pub fn get_git_info(path: &str) -> Option<GitInfo> {
 
     Some(GitInfo { branch, is_dirty, ahead, behind, stashes })
 }
+
+/// Returns `owner/repo` (no .git suffix) when the project at `path` has a
+/// GitHub origin remote; returns `None` otherwise.
+pub fn get_github_repository(path: &str) -> Option<String> {
+    let repo = Repository::open(path).ok()?;
+    let remote = repo.find_remote("origin").ok()?;
+    let url = remote.url().ok()?.to_string();
+    // HTTPS: https://github.com/owner/repo[.git]
+    // SSH:   git@github.com:owner/repo[.git]
+    let slug = if let Some(rest) = url.strip_prefix("https://github.com/") {
+        rest.to_string()
+    } else if let Some(rest) = url.strip_prefix("git@github.com:") {
+        rest.to_string()
+    } else {
+        return None;
+    };
+    let slug = slug.trim_end_matches(".git").trim_end_matches('/').to_string();
+    // Basic sanity: must look like owner/repo
+    if slug.contains('/') && !slug.starts_with('/') { Some(slug) } else { None }
+}

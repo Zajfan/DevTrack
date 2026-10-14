@@ -203,6 +203,8 @@ fn main() {
             commands::app_export_data,
             commands::app_import_data,
             commands::app_get_data_dir,
+            commands::companion_export,
+            commands::companion_import,
             commands::show_window,
             commands::quit_app,
             commands::settings_get,

@@ -12,10 +12,17 @@ import {
   Loader2,
   Trash2,
   RefreshCw,
+  Smartphone,
+  ArrowUpFromLine,
+  ArrowDownToLine,
+  ShieldCheck,
+  Check,
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '@store/settingsStore';
-import { saveFile } from '@components/NativeDialogs';
+import { saveFile, selectFile } from '@components/NativeDialogs';
+import { useCompanionExport, useCompanionImport } from '@hooks/useApi';
+import type { CompanionImportResult } from '../api/client';
 
 interface Settings {
   username: string;
@@ -56,7 +63,7 @@ const defaultSettings: Settings = {
 };
 
 export function Settings() {
-  const [activeTab, setActiveTab] = useState<'general' | 'appearance' | 'notifications' | 'sync' | 'advanced'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'appearance' | 'notifications' | 'sync' | 'mobile' | 'advanced'>('general');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<Settings>(defaultSettings);
@@ -66,6 +73,7 @@ export function Settings() {
     { id: 'appearance', label: 'Appearance', icon: Palette },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'sync', label: 'Sync', icon: GitBranch },
+    { id: 'mobile', label: 'Mobile', icon: Smartphone },
     { id: 'advanced', label: 'Advanced', icon: Shield },
   ];
 
@@ -143,6 +151,9 @@ export function Settings() {
             )}
             {activeTab === 'sync' && (
               <SyncSettings settings={settings} setSettings={setSettings} />
+            )}
+            {activeTab === 'mobile' && (
+              <MobileSettings />
             )}
             {activeTab === 'advanced' && (
               <AdvancedSettings settings={settings} setSettings={setSettings} />
@@ -417,6 +428,141 @@ function SyncSettings({ settings, setSettings }: { settings: any; setSettings: a
           <br />
           <span className="text-purple-600 dark:text-purple-400">Note:</span> syncing requires git access to the repository (SSH key or credentials).
         </p>
+      </div>
+    </div>
+  );
+}
+
+function MobileSettings() {
+  const companionExport = useCompanionExport();
+  const companionImport = useCompanionImport();
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [preview, setPreview] = useState<CompanionImportResult | null>(null);
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
+
+  const handleExport = async () => {
+    setExportStatus(null);
+    try {
+      const path = await companionExport.mutateAsync();
+      setExportStatus(`Exported to ${path}`);
+    } catch (err) {
+      setExportStatus(`Export failed: ${String(err)}`);
+    }
+  };
+
+  const handleImportPick = async () => {
+    setImportStatus(null);
+    setPreview(null);
+    try {
+      const picked = await selectFile({ title: 'Open companion backup', filters: [{ name: 'JSON', extensions: ['json'] }] });
+      const path = Array.isArray(picked) ? picked[0] : picked;
+      if (!path) return;
+      const result = await companionImport.mutateAsync({ path, dryRun: true });
+      setPendingPath(path);
+      setPreview(result);
+    } catch (err) {
+      setImportStatus(`Import failed: ${String(err)}`);
+    }
+  };
+
+  const handleImportConfirm = async () => {
+    if (!pendingPath) return;
+    try {
+      const result = await companionImport.mutateAsync({ path: pendingPath, dryRun: false });
+      setPreview(null);
+      setPendingPath(null);
+      setImportStatus(
+        `Import complete — ${result.projects_updated} project${result.projects_updated === 1 ? '' : 's'} updated, ${result.projects_created} created; ${result.tasks_updated} task${result.tasks_updated === 1 ? '' : 's'} updated, ${result.tasks_created} created. Recovery backup: ${result.backup_path ?? 'n/a'}`
+      );
+    } catch (err) {
+      setImportStatus(`Import failed: ${String(err)}`);
+      setPreview(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Companion Transfer</h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        Move your projects and tasks to the DevTrack Android companion app, or bring changes back to the desktop.
+      </p>
+
+      <div className="space-y-3">
+        <div>
+          <button
+            onClick={handleExport}
+            disabled={companionExport.isPending}
+            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 flex items-center gap-2"
+          >
+            {companionExport.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUpFromLine className="w-4 h-4" />}
+            Export for companion (JSON)
+          </button>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Includes all projects, tasks, notes and GitHub repository slugs in the companion format.
+          </p>
+          {exportStatus && (
+            <p className={cn('mt-1 text-sm', exportStatus.startsWith('Exported') ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
+              {exportStatus}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <button
+            onClick={handleImportPick}
+            disabled={companionImport.isPending}
+            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 flex items-center gap-2"
+          >
+            {companionImport.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowDownToLine className="w-4 h-4" />}
+            Import companion backup
+          </button>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Accept a companion JSON backup. A recovery backup is created before any changes are made.
+          </p>
+          {importStatus && (
+            <p className={cn('mt-1 text-sm break-all', importStatus.startsWith('Import complete') ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
+              {importStatus}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {preview && (
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
+          <h4 className="font-medium text-gray-900 dark:text-white">Preview changes</h4>
+          <ul className="text-sm space-y-1 text-gray-700 dark:text-gray-300 max-h-48 overflow-y-auto">
+            {preview.preview_projects.map((label, i) => (
+              <li key={i} className="flex items-center gap-2"><Check className="w-3 h-3 text-purple-500 shrink-0" />{label}</li>
+            ))}
+            {(preview.tasks_updated + preview.tasks_created) > 0 && (
+              <li className="text-gray-500 dark:text-gray-400 text-xs mt-2">
+                {preview.tasks_updated} task{preview.tasks_updated === 1 ? '' : 's'} to update, {preview.tasks_created} to create
+              </li>
+            )}
+          </ul>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={handleImportConfirm}
+              disabled={companionImport.isPending}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-40 flex items-center gap-2 text-sm"
+            >
+              {companionImport.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+              Confirm import
+            </button>
+            <button
+              onClick={() => { setPreview(null); setPendingPath(null); }}
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm text-gray-600 dark:text-gray-400">
+        <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0 text-purple-500" />
+        <p>Projects already on your desktop are updated in place. New companion-only projects are added. A recovery backup is saved to your data directory before every import.</p>
       </div>
     </div>
   );

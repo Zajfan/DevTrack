@@ -1,5 +1,5 @@
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, type Project, type Task, type SubTask, type TimeEntry, type TimeLogSummary, type DashboardSummary, type CreateProjectRequest, type UpdateProjectRequest, type CreateTaskRequest, type UpdateTaskRequest, type CreateSubTaskRequest, type UpdateSubTaskRequest, type NotesRequest, type ActiveTimerResponse, type GitInfo, type TimeLogEntry } from '../api/client';
+import { api, type Project, type Task, type SubTask, type TimeEntry, type TimeLogSummary, type DashboardSummary, type CreateProjectRequest, type UpdateProjectRequest, type CreateTaskRequest, type UpdateTaskRequest, type CreateSubTaskRequest, type UpdateSubTaskRequest, type NotesRequest, type ActiveTimerResponse, type GitInfo, type TimeLogEntry, type CompanionImportResult } from '../api/client';
 
 export const useProjects = (archived = false) =>
   useQuery<Project[]>({
@@ -382,6 +382,25 @@ export const useTimeEntryDelete = () => {
       queryClient.invalidateQueries({ queryKey: ['time-entries'] });
       queryClient.invalidateQueries({ queryKey: ['time-report'] });
       queryClient.invalidateQueries({ queryKey: ['task-time-entries'] });
+    },
+  });
+};
+
+export const useCompanionExport = () =>
+  useMutation({ mutationFn: () => api.companion.export() });
+
+export const useCompanionImport = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ path, dryRun }: { path: string; dryRun: boolean }) =>
+      api.companion.import(path, dryRun),
+    onSuccess: (_data, { dryRun }) => {
+      if (!dryRun) {
+        queryClient.invalidateQueries({ queryKey: ['projects'] });
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['notes'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      }
     },
   });
 };
