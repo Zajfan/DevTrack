@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.3] — 2026-10-14
+
+### Added
+
+- **Version display** — Settings → Advanced now shows an About card with the installed app version read live from the Tauri runtime, so you can always confirm which build is running without external tools.
+
+### Fixed
+
+- Companion transfer footer updated from "1.0 · Android release candidate" to the correct version number.
+
+---
+
 ## [1.0.2] — 2026-10-14
 
 ### Added
