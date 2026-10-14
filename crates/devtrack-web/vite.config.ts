@@ -2,9 +2,17 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
+import { readFileSync } from 'fs';
+
+const tauriVersion: string = JSON.parse(
+  readFileSync(path.resolve(__dirname, '../devtrack-desktop/tauri.conf.json'), 'utf-8')
+).version;
 
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(tauriVersion),
+  },
   plugins: [
     react(),
     VitePWA({
