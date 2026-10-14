@@ -1,10 +1,12 @@
 export type CompanionProject = { id: string; name: string; repository: string; tags: string; notes: string };
 export type CompanionTask = { id: string; project_id: string; title: string; description: string; status: 'todo' | 'done'; priority: string; target_version: string; updated_at: string };
-export type CompanionState = { format: 'devtrack-companion'; version: 1; projects: CompanionProject[]; tasks: CompanionTask[] };
+export type CompanionSubTask = { id: string; task_id: string; title: string; done: boolean };
+export type CompanionTimeEntry = { id: string; task_id: string; project_id: string; start: string; end: string; seconds: number };
+export type CompanionState = { format: 'devtrack-companion'; version: 1; projects: CompanionProject[]; tasks: CompanionTask[]; subtasks: CompanionSubTask[]; time_entries: CompanionTimeEntry[] };
 
 export const versionPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 export const validVersion = (value: string) => value === '' || (value.length <= 128 && versionPattern.test(value) && !value.split('+')[0].split('-').slice(1).join('-').split('.').some(p => /^\d+$/.test(p) && p.length > 1 && p.startsWith('0')));
-export const emptyState = (): CompanionState => ({ format: 'devtrack-companion', version: 1, projects: [], tasks: [] });
+export const emptyState = (): CompanionState => ({ format: 'devtrack-companion', version: 1, projects: [], tasks: [], subtasks: [], time_entries: [] });
 
 export function normalizeRepository(value: string): string {
   const input = value.trim().replace(/\.git\/?$/, '').replace(/\/$/, '');
@@ -30,6 +32,8 @@ export function parseBackup(json: string): CompanionState {
   if (root.format !== undefined && !mobile) throw new Error('Unrecognized backup format.');
   if (mobile && root.version !== 1) throw new Error('Unsupported backup version.');
   if (!Array.isArray(root.projects) || !Array.isArray(root.tasks) || root.projects.length > 10000 || root.tasks.length > 100000) throw new Error('Invalid backup projects or tasks.');
+  if (Array.isArray(root.subtasks) && root.subtasks.length > 500000) throw new Error('Backup exceeds allowed subtask limit.');
+  if (Array.isArray(root.time_entries) && root.time_entries.length > 500000) throw new Error('Backup exceeds allowed time entry limit.');
   const state = emptyState();
   const ids = new Map<string, string>();
   for (const raw of root.projects) {
@@ -67,6 +71,32 @@ export function parseBackup(json: string): CompanionState {
     if (!Number.isFinite(Date.parse(task.updated_at))) throw new Error('Invalid task timestamp.');
     state.tasks.push(task);
   }
+  const subtaskIds = new Set<string>();
+  for (const raw of (Array.isArray(root.subtasks) ? root.subtasks : [])) {
+    const s = record(raw);
+    if (mobile ? typeof s.id !== 'string' : !Number.isSafeInteger(s.id)) throw new Error('Invalid subtask identity.');
+    const id = mobile ? text(s.id, 'subtask identity', 1000) : `desktop:subtask:${s.id}`;
+    if (!id || subtaskIds.has(id)) throw new Error('Duplicate subtask identity.');
+    subtaskIds.add(id);
+    const rawTaskId = mobile ? text(s.task_id, 'subtask task_id', 1000) : `desktop:${s.task_id}`;
+    if (!taskIds.has(rawTaskId)) throw new Error('Subtask belongs to a missing task.');
+    const title = text(s.title, 'subtask title', 1000).trim();
+    if (!title) throw new Error('Subtask title is required.');
+    const done = s.done === true || s.done === 1;
+    state.subtasks.push({ id, task_id: rawTaskId, title, done });
+  }
+  for (const raw of (Array.isArray(root.time_entries) ? root.time_entries : [])) {
+    const e = record(raw);
+    if (typeof e.id !== 'string' || !e.id) throw new Error('Invalid time entry identity.');
+    const id = text(e.id, 'time entry identity', 1000);
+    const task_id = text(e.task_id, 'time entry task_id', 1000);
+    const project_id = text(e.project_id, 'time entry project_id', 1000);
+    const start = text(e.start, 'time entry start', 100);
+    const end = text(e.end, 'time entry end', 100);
+    if (!Number.isFinite(Date.parse(start)) || !Number.isFinite(Date.parse(end))) throw new Error('Invalid time entry timestamps.');
+    const seconds = typeof e.seconds === 'number' && e.seconds >= 0 ? Math.floor(e.seconds) : 0;
+    state.time_entries.push({ id, task_id, project_id, start, end, seconds });
+  }
   return state;
 }
 
@@ -75,4 +105,18 @@ export function saveTask(state: CompanionState, task: CompanionTask): CompanionS
   if (!validVersion(task.target_version)) throw new Error('Use a version such as 0.1, 0.1.0 or 0.1.0-alpha.1.');
   if (!state.projects.some(p => p.id === task.project_id)) throw new Error('Project no longer exists.');
   return parseBackup(JSON.stringify({ ...state, tasks: [...state.tasks.filter(t => t.id !== task.id), { ...task, title: task.title.trim() }] }));
+}
+
+export function saveSubTask(state: CompanionState, subtask: CompanionSubTask): CompanionState {
+  if (!subtask.title.trim()) throw new Error('Subtask title is required.');
+  if (!state.tasks.some(t => t.id === subtask.task_id)) throw new Error('Task no longer exists.');
+  return parseBackup(JSON.stringify({ ...state, subtasks: [...state.subtasks.filter(s => s.id !== subtask.id), subtask] }));
+}
+
+export function deleteSubTask(state: CompanionState, id: string): CompanionState {
+  return parseBackup(JSON.stringify({ ...state, subtasks: state.subtasks.filter(s => s.id !== id) }));
+}
+
+export function addTimeEntry(state: CompanionState, entry: CompanionTimeEntry): CompanionState {
+  return parseBackup(JSON.stringify({ ...state, time_entries: [...state.time_entries, entry] }));
 }

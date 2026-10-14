@@ -570,13 +570,16 @@ pub async fn companion_export(state: State<'_, AppState>) -> Result<String, Stri
     #[derive(serde::Serialize)]
     struct CTask { id: String, project_id: String, title: String, description: String, status: String, priority: String, target_version: String, updated_at: String }
     #[derive(serde::Serialize)]
-    struct CExport { format: &'static str, version: u32, projects: Vec<CProject>, tasks: Vec<CTask> }
+    struct CSubTask { id: String, task_id: String, title: String, done: bool }
+    #[derive(serde::Serialize)]
+    struct CExport { format: &'static str, version: u32, projects: Vec<CProject>, tasks: Vec<CTask>, subtasks: Vec<CSubTask> }
 
     let conn = state.db.lock().unwrap();
     let projects = queries::get_all_projects(&conn, false).map_err(|e| e.to_string())?;
 
     let mut c_projects = Vec::new();
     let mut c_tasks = Vec::new();
+    let mut c_subtasks = Vec::new();
 
     for project in &projects {
         let repository = devtrack_core::get_github_repository(&project.path).unwrap_or_default();
@@ -590,6 +593,17 @@ pub async fn companion_export(state: State<'_, AppState>) -> Result<String, Stri
             notes,
         });
         let tasks = queries::get_tasks_for_project(&conn, project.id).map_err(|e| e.to_string())?;
+        for task in &tasks {
+            let subtasks = queries::get_subtasks(&conn, task.id).map_err(|e| e.to_string())?;
+            for s in subtasks {
+                c_subtasks.push(CSubTask {
+                    id: format!("desktop:subtask:{}", s.id),
+                    task_id: format!("desktop:{}", task.id),
+                    title: s.title,
+                    done: s.done,
+                });
+            }
+        }
         for task in tasks {
             let status = if task.status == "Done" || task.status == "Completed" { "done" } else { "todo" };
             let priority = task.priority.to_lowercase();
@@ -607,7 +621,7 @@ pub async fn companion_export(state: State<'_, AppState>) -> Result<String, Stri
         }
     }
 
-    let export = CExport { format: "devtrack-companion", version: 1, projects: c_projects, tasks: c_tasks };
+    let export = CExport { format: "devtrack-companion", version: 1, projects: c_projects, tasks: c_tasks, subtasks: c_subtasks };
     let json = serde_json::to_string_pretty(&export).map_err(|e| e.to_string())?;
     let export_path = state.config.data_dir.join(format!(
         "devtrack-companion-export-{}.json",
