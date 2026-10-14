@@ -30,7 +30,7 @@ class Desktop:
         # Do not route localhost automation through a CI HTTP proxy.
         self.http = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-    def request(self, path, body=None, timeout=30):
+    def request(self, path, body=None, timeout=10):
         request = urllib.request.Request(
             f'http://127.0.0.1:{self.port}{path}',
             data=None if body is None else json.dumps(body).encode(),
@@ -92,8 +92,13 @@ class Desktop:
     def wait(self, script, description, timeout=20):
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            if self.evaluate(script):
-                return
+            try:
+                if self.evaluate(script):
+                    return
+            except TimeoutError:
+                # WebKit may still be initializing; the HTTP request timed out
+                # before the engine could run the script. Retry within the budget.
+                pass
             time.sleep(0.2)
         raise AssertionError(f'Timed out: {description}')
 
