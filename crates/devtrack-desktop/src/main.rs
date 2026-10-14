@@ -197,6 +197,7 @@ fn main() {
             commands::notes_get,
             commands::notes_update,
             commands::dashboard_summary,
+            commands::prioritised_projects,
             commands::project_open_path,
             commands::project_open_terminal,
             commands::app_backup,

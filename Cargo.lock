@@ -1139,7 +1139,7 @@ dependencies = [
 
 [[package]]
 name = "devtrack-api"
-version = "1.0.0"
+version = "1.0.4"
 dependencies = [
  "anyhow",
  "axum 0.7.9",
@@ -1157,7 +1157,7 @@ dependencies = [
 
 [[package]]
 name = "devtrack-core"
-version = "1.0.0"
+version = "1.0.4"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1173,7 +1173,7 @@ dependencies = [
 
 [[package]]
 name = "devtrack-desktop"
-version = "1.0.0"
+version = "1.0.4"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1203,7 +1203,7 @@ dependencies = [
 
 [[package]]
 name = "devtrack-tui"
-version = "1.0.0"
+version = "1.0.4"
 dependencies = [
  "anyhow",
  "chrono",

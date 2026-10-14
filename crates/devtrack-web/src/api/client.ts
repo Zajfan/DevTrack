@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
   Project,
+  PrioritisedProject,
   GitInfo,
   Task,
   SubTask,
@@ -35,6 +36,7 @@ export interface CompanionImportResult {
 export const api = {
   projects: {
     list: (archived?: boolean) => i<Project[]>('projects_list', { archived: archived ?? false }),
+    prioritised: () => i<PrioritisedProject[]>('prioritised_projects'),
     get: (id: number) => i<Project>('project_get', { id }),
     create: (data: CreateProjectRequest) => i<Project>('project_create', { name: data.name, path: data.path }),
     update: (id: number, data: UpdateProjectRequest) => i<Project>('project_update', {
@@ -126,6 +128,7 @@ export const api = {
 
 export type {
   Project,
+  PrioritisedProject,
   GitInfo,
   Task,
   SubTask,

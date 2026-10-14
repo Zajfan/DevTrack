@@ -328,6 +328,12 @@ pub async fn notes_update(state: State<'_, AppState>, project_id: i64, content: 
 }
 
 #[tauri::command]
+pub async fn prioritised_projects(state: State<'_, AppState>) -> Result<Vec<devtrack_core::models::PrioritisedProject>, String> {
+    let conn = state.db.lock().unwrap();
+    queries::get_prioritised_projects(&conn, 8).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn dashboard_summary(state: State<'_, AppState>) -> Result<DashboardSummary, String> {
     let conn = state.db.lock().unwrap();
     

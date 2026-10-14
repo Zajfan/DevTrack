@@ -19,6 +19,12 @@ export interface Project {
   git?: GitInfo | null;
 }
 
+export interface PrioritisedProject extends Project {
+  open_tasks: number;
+  overdue_tasks: number;
+  score: number;
+}
+
 export interface GitInfo {
   branch: string;
   is_dirty: boolean;

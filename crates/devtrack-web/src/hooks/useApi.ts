@@ -1,10 +1,17 @@
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, type Project, type Task, type SubTask, type TimeEntry, type TimeLogSummary, type DashboardSummary, type CreateProjectRequest, type UpdateProjectRequest, type CreateTaskRequest, type UpdateTaskRequest, type CreateSubTaskRequest, type UpdateSubTaskRequest, type NotesRequest, type ActiveTimerResponse, type GitInfo, type TimeLogEntry, type CompanionImportResult } from '../api/client';
+import { api, type Project, type PrioritisedProject, type Task, type SubTask, type TimeEntry, type TimeLogSummary, type DashboardSummary, type CreateProjectRequest, type UpdateProjectRequest, type CreateTaskRequest, type UpdateTaskRequest, type CreateSubTaskRequest, type UpdateSubTaskRequest, type NotesRequest, type ActiveTimerResponse, type GitInfo, type TimeLogEntry, type CompanionImportResult } from '../api/client';
 
 export const useProjects = (archived = false) =>
   useQuery<Project[]>({
     queryKey: ['projects', archived],
     queryFn: () => api.projects.list(archived),
+  });
+
+export const usePrioritisedProjects = () =>
+  useQuery<PrioritisedProject[]>({
+    queryKey: ['prioritised-projects'],
+    queryFn: () => api.projects.prioritised(),
+    staleTime: 30_000,
   });
 
 // Returns the project list immediately (fast DB query), then merges in git

@@ -2,7 +2,7 @@ import { WorkspaceWorkStatus } from '../components/WorkspaceWorkPanel';
 import {
   useDashboardSummary,
   useTimeEntries,
-  useProjectsWithGit,
+  usePrioritisedProjects,
 } from "@hooks/useApi";
 import { formatDuration, formatTimestamp } from "@utils/helpers";
 import {
@@ -11,7 +11,7 @@ import {
   Clock,
   ArrowUpRight,
   Timer,
-  GitBranch,
+  AlertTriangle,
   Plus,
   ArrowRight,
   Circle,
@@ -21,12 +21,27 @@ import { useAppStore } from "@store/appStore";
 import { useNavigate } from "react-router-dom";
 import { useWorkspaceWork } from '../hooks/useWorkspaceWork';
 
+function relativeTime(iso: string | null): string {
+  if (!iso) return 'Never opened';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 2) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'Yesterday';
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return months === 1 ? '1 month ago' : `${months} months ago`;
+}
+
 export function Dashboard() {
   const { data: summary, isLoading, error } = useDashboardSummary();
   const { data: timeEntries } = useTimeEntries("today");
+  const { data: prioritised } = usePrioritisedProjects();
   const work = useWorkspaceWork();
   const tasks = work.items;
-  const { data: projects } = useProjectsWithGit(false);
   const setSelectedProject = useAppStore((state) => state.setSelectedProject);
   const navigate = useNavigate();
   const openTasks = tasks?.filter((t) => t.status === "Todo") ?? [];
@@ -125,38 +140,42 @@ export function Dashboard() {
       <div className="overview-columns">
         <section className="workspace-panel">
           <div className="panel-heading">
-            <h2>Projects</h2>
+            <h2>Jump back in</h2>
             <button
               className="text-action"
               onClick={() => navigate("/projects")}
             >
-              View all
+              All projects
               <ArrowUpRight size={14} />
             </button>
           </div>
           <div className="project-list">
-            {projects?.length ? (
-              projects.slice(0, 5).map((project) => (
+            {prioritised?.length ? (
+              prioritised.map((p) => (
                 <button
-                  key={project.id}
+                  key={p.id}
                   className="project-list-row"
-                  onClick={() => openProject(project.id)}
+                  onClick={() => openProject(p.id)}
                 >
                   <span className="project-monogram">
-                    {project.name.slice(0, 2).toUpperCase()}
+                    {p.name.slice(0, 2).toUpperCase()}
                   </span>
                   <span className="project-list-info">
-                    <strong>{project.name}</strong>
-                    <small>{project.path}</small>
+                    <strong>{p.name}</strong>
+                    <small>{relativeTime(p.last_accessed)}</small>
                   </span>
-                  <span className="project-branch">
-                    <GitBranch size={13} />
-                    {project.git?.branch ?? "Local folder"}
+                  <span className="project-task-counts">
+                    {p.overdue_tasks > 0 && (
+                      <span className="task-count overdue" title={`${p.overdue_tasks} overdue`}>
+                        <AlertTriangle size={11} />{p.overdue_tasks}
+                      </span>
+                    )}
+                    {p.open_tasks > 0 && (
+                      <span className="task-count open" title={`${p.open_tasks} open tasks`}>
+                        <CheckSquare size={11} />{p.open_tasks}
+                      </span>
+                    )}
                   </span>
-                  <span
-                    className={`status-dot ${project.status === "Active" ? "active" : ""}`}
-                    title={project.status}
-                  />
                   <ArrowUpRight size={15} />
                 </button>
               ))

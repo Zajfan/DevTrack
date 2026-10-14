@@ -32,6 +32,15 @@ pub struct Project {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrioritisedProject {
+    #[serde(flatten)]
+    pub project: Project,
+    pub open_tasks: i64,
+    pub overdue_tasks: i64,
+    pub score: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectWithGit {
     #[serde(flatten)]
     pub project: Project,

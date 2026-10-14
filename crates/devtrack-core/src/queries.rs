@@ -29,6 +29,46 @@ fn project_from_row(row: &rusqlite::Row) -> rusqlite::Result<Project> {
     })
 }
 
+pub fn get_prioritised_projects(conn: &Connection, limit: usize) -> Result<Vec<PrioritisedProject>> {
+    let sql = format!(
+        "SELECT p.id, p.name, p.path, p.status, p.tags, p.last_accessed, p.created_at,
+                p.description, p.color, p.icon,
+                p.concept_what, p.concept_why, p.concept_how,
+                p.concept_when, p.concept_where, p.concept_with_what,
+                (SELECT COUNT(*) FROM tasks WHERE project_id = p.id
+                 AND status NOT IN ('Done','Completed')) AS open_tasks,
+                (SELECT COUNT(*) FROM tasks WHERE project_id = p.id
+                 AND status NOT IN ('Done','Completed')
+                 AND due_date IS NOT NULL
+                 AND due_date < date('now','localtime')) AS overdue_tasks,
+                CASE WHEN p.last_accessed IS NOT NULL
+                    THEN MAX(0.0, 30.0 - (julianday('now','localtime') - julianday(p.last_accessed)))
+                    ELSE 0.0
+                END +
+                (SELECT COUNT(*) FROM tasks WHERE project_id = p.id
+                 AND status NOT IN ('Done','Completed')) * 0.5 +
+                (SELECT COUNT(*) FROM tasks WHERE project_id = p.id
+                 AND status NOT IN ('Done','Completed')
+                 AND due_date IS NOT NULL
+                 AND due_date < date('now','localtime')) * 3.0
+                AS score
+         FROM projects p
+         WHERE p.status != 'Archived'
+         ORDER BY score DESC
+         LIMIT {}",
+        limit
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map([], |row| {
+        let project = project_from_row(row)?;
+        let open_tasks: i64 = row.get(16)?;
+        let overdue_tasks: i64 = row.get(17)?;
+        let score: f64 = row.get(18)?;
+        Ok(PrioritisedProject { project, open_tasks, overdue_tasks, score })
+    })?;
+    rows.collect()
+}
+
 pub fn get_all_projects(conn: &Connection, show_archived: bool) -> Result<Vec<Project>> {
     let sql = if show_archived {
         format!("SELECT {} FROM projects", PROJECT_COLUMNS)
