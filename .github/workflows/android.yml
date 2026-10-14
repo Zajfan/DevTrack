@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing unpublished draft release to receive the APK
+        description: Release tag to attach the APK to (draft or published)
         required: true
         default: v1.0.0-draft.1
 permissions:
@@ -16,11 +16,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Require an existing draft
+      - name: Verify release exists
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ inputs.release_tag }}
-        run: test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+        run: gh release view "$RELEASE_TAG" > /dev/null
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -76,14 +76,14 @@ jobs:
             if adb shell pm path com.devtrack.companion | grep -q '^package:'; then adb uninstall com.devtrack.companion; fi
             adb install mobile/android/app/build/outputs/apk/release/app-release.apk
             adb shell am start -W -n com.devtrack.companion/.MainActivity
-      - name: Attach signed APK to draft
+      - name: Attach signed APK to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
-          cp mobile/android/app/build/outputs/apk/release/app-release.apk DevTrack_1.0.0_android.apk
-          gh release upload "$RELEASE_TAG" DevTrack_1.0.0_android.apk --clobber
+          VERSION="${RELEASE_TAG#v}"
+          cp mobile/android/app/build/outputs/apk/release/app-release.apk "DevTrack_${VERSION}_android.apk"
+          gh release upload "$RELEASE_TAG" "DevTrack_${VERSION}_android.apk" --clobber
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -91,6 +91,7 @@ jobs:
           path: |
             mobile/android/app/build/reports
             mobile/android/app/build/outputs/androidTest-results
+            mobile/android/app/build/outputs/apk/release/app-release.apk
       - name: Remove temporary signing key
         if: always()
         run: rm -f "$RUNNER_TEMP/devtrack-android.p12"
