@@ -19,6 +19,7 @@ import {
   Check,
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
 import { useSettingsStore } from '@store/settingsStore';
 import { saveFile, selectFile } from '@components/NativeDialogs';
 import { useCompanionExport, useCompanionImport } from '@hooks/useApi';
@@ -570,6 +571,8 @@ function MobileSettings() {
 
 function AdvancedSettings({ settings, setSettings }: { settings: any; setSettings: any }) {
   const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const [appVersion, setAppVersion] = useState<string | null>(null);
+  useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">API Server</h3>
@@ -603,6 +606,17 @@ function AdvancedSettings({ settings, setSettings }: { settings: any; setSetting
           />
           <span className="text-gray-700 dark:text-gray-300">Send anonymous usage statistics</span>
         </label>
+      </div>
+
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">About</h3>
+      <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg flex items-center justify-between">
+        <div>
+          <p className="font-medium text-gray-900 dark:text-white">DevTrack</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Development tracker — local-first, no telemetry</p>
+        </div>
+        <span className="font-mono text-sm text-purple-600 dark:text-purple-400">
+          {appVersion ? `v${appVersion}` : '—'}
+        </span>
       </div>
 
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Data Management</h3>

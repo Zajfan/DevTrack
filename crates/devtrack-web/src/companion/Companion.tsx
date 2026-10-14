@@ -204,7 +204,7 @@ export function Companion() {
         <label className="transfer-card"><span className="project-icon green"><ArrowDownToLine/></span><span><strong>Import JSON file</strong><small>Restore a companion backup or start from a desktop task export.</small></span><ChevronRight size={18}/><input aria-label="Import JSON file" type="file" accept="application/json,.json" onChange={e=>{void importFile(e.target.files?.[0]);e.target.value='';}}/></label>
         <div className="transfer-info"><ShieldCheck size={22}/><div><strong>Your current data stays until you confirm</strong><p>The whole file is validated before replacement. Export a backup first.</p></div></div>
         <p className="quiet">Desktop exports include your notes and GitHub repository URLs. To import a companion backup back into the desktop app, use Settings → Mobile on the desktop.</p>
-        <p className="quiet">DevTrack companion 1.0 · Android release candidate</p>
+        <p className="quiet">DevTrack companion v1.0.2</p>
       </>}
     </main>
     <nav className="mobile-nav" aria-label="Main navigation">{([{id:'projects',label:'Projects',Icon:Layers},{id:'tasks',label:'Tasks',Icon:CheckSquare},{id:'transfer',label:'Transfer',Icon:ArrowLeftRight}] as const).map(({id,label,Icon})=><button key={id} className={screen===id?'active':''} aria-current={screen===id?'page':undefined} onClick={()=>navigate(id)}><Icon size={21}/><span>{label}</span></button>)}</nav>
