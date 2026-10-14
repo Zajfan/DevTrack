@@ -110,7 +110,6 @@ export const api = {
 };
 
 export type {
-  CompanionImportResult,
   Project,
   GitInfo,
   Task,
