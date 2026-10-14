@@ -64,9 +64,20 @@ class Desktop:
                     if time.monotonic() >= deadline:
                         raise RuntimeError('WebDriver did not start; build with --features desktop-test')
                     time.sleep(0.2)
-            result = self.request('/session', {'capabilities': {'alwaysMatch': {}}})
+            # The WebDriver server may be up before WebView2/WebKit creates the
+            # window. Retry until the deadline rather than failing immediately.
+            session_deadline = time.monotonic() + 30
+            while True:
+                try:
+                    result = self.request('/session', {'capabilities': {'alwaysMatch': {}}})
+                    break
+                except RuntimeError as err:
+                    if 'no such window' not in str(err) or time.monotonic() >= session_deadline:
+                        raise
+                    time.sleep(0.5)
             self.session = '/session/' + result['sessionId']
-            self.wait("return document.querySelector('main')?.innerText.includes('Recent activity')", 'Overview startup')
+            # Debug builds on CI runners can take 60+ seconds to fully render.
+            self.wait("return document.querySelector('main')?.innerText.includes('Recent activity')", 'Overview startup', timeout=60)
             # Windows uses http://tauri.localhost for bundled assets.
             assert self.evaluate("return ['tauri:', 'asset:'].includes(location.protocol) || location.hostname === 'tauri.localhost'"), 'App loaded a development server'
             self.evaluate("window.__verificationErrors=[]; addEventListener('error',e=>window.__verificationErrors.push(e.message)); addEventListener('unhandledrejection',e=>window.__verificationErrors.push(String(e.reason)))")
