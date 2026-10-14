@@ -1,6 +1,6 @@
 {
   "productName": "DevTrack",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "identifier": "com.devtrack.app",
   "build": {
     "frontendDist": "../devtrack-web/dist",

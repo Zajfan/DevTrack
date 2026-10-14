@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.4] — 2026-10-14
+
+### Fixed
+
+- Companion transfer footer version string is now read from `tauri.conf.json` at build time via a Vite `define`, so it always matches the installed binary. Previously the string was hardcoded and fell out of sync with each release.
+
+---
+
 ## [1.0.3] — 2026-10-14
 
 ### Added
