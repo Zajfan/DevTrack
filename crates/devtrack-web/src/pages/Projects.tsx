@@ -1,7 +1,7 @@
 import { ProjectTag } from "../components/ProjectTag";
 import { projectTags, hasProjectTag, prioritizeProjectTags } from "../utils/tags";
 import {
-  useProjects,
+  useProjectsWithGit,
   useCreateProject,
   useDeleteProject,
   useUpdateProject,
@@ -37,8 +37,8 @@ import { groupProjectsByFolder, projectFolderGroup, sortProjects, type ProjectSo
 export function Projects() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { data: projects, isLoading, error } = useProjects(false);
-  const { data: archivedProjects, isLoading: archivedLoading, error: archivedError } = useProjects(true);
+  const { data: projects, isLoading, error } = useProjectsWithGit(false);
+  const { data: archivedProjects, isLoading: archivedLoading, error: archivedError } = useProjectsWithGit(true);
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();

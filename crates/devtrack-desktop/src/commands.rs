@@ -65,18 +65,12 @@ pub async fn projects_list(state: State<'_, AppState>, archived: Option<bool>) -
     let projects = queries::get_all_projects(&conn, archived.unwrap_or(false))
         .map_err(|e| e.to_string())?;
     drop(conn);
+    // Git status is intentionally omitted here so the list returns from the
+    // database immediately. The frontend fetches git info per-project after
+    // the list renders, keeping the UI responsive even with hundreds of projects.
     Ok(projects
         .into_iter()
-        .map(|project| ProjectWithGit {
-            git: get_git_info(&project.path).map(|g| GitInfo {
-                branch: g.branch,
-                is_dirty: g.is_dirty,
-                ahead: g.ahead,
-                behind: g.behind,
-                stashes: g.stashes,
-            }),
-            project,
-        })
+        .map(|project| ProjectWithGit { git: None, project })
         .collect())
 }
 

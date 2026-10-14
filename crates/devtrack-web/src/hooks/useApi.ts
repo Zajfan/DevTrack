@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, type Project, type Task, type SubTask, type TimeEntry, type TimeLogSummary, type DashboardSummary, type CreateProjectRequest, type UpdateProjectRequest, type CreateTaskRequest, type UpdateTaskRequest, type CreateSubTaskRequest, type UpdateSubTaskRequest, type NotesRequest, type ActiveTimerResponse, type GitInfo, type TimeLogEntry } from '../api/client';
 
 export const useProjects = (archived = false) =>
@@ -6,6 +6,26 @@ export const useProjects = (archived = false) =>
     queryKey: ['projects', archived],
     queryFn: () => api.projects.list(archived),
   });
+
+// Returns the project list immediately (fast DB query), then merges in git
+// status for each project as it loads in parallel. Use this wherever both
+// the project data and git badges are needed.
+export const useProjectsWithGit = (archived = false) => {
+  const { data: projects, ...rest } = useProjects(archived);
+  const ids = projects?.map((p) => p.id) ?? [];
+  const gitResults = useQueries({
+    queries: ids.map((id) => ({
+      queryKey: ['project-git', id],
+      queryFn: () => api.projects.git(id),
+      staleTime: 30_000,
+    })),
+  });
+  const merged = projects?.map((project, i) => ({
+    ...project,
+    git: gitResults[i]?.data ?? project.git ?? null,
+  }));
+  return { data: merged, ...rest };
+};
 
 export const useProject = (id: number | null) =>
   useQuery<Project>({

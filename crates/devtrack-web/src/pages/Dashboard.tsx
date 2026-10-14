@@ -2,7 +2,7 @@ import { WorkspaceWorkStatus } from '../components/WorkspaceWorkPanel';
 import {
   useDashboardSummary,
   useTimeEntries,
-  useProjects,
+  useProjectsWithGit,
 } from "@hooks/useApi";
 import { formatDuration, formatTimestamp } from "@utils/helpers";
 import {
@@ -26,7 +26,7 @@ export function Dashboard() {
   const { data: timeEntries } = useTimeEntries("today");
   const work = useWorkspaceWork();
   const tasks = work.items;
-  const { data: projects } = useProjects(false);
+  const { data: projects } = useProjectsWithGit(false);
   const setSelectedProject = useAppStore((state) => state.setSelectedProject);
   const navigate = useNavigate();
   const openTasks = tasks?.filter((t) => t.status === "Todo") ?? [];
